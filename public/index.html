@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mutabaah Keluarga</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1b4332">
+<style>
+  :root {
+    --color-primary: #1b4332;
+    --color-secondary: #40916c;
+    --color-bg: #f6f7f5;
+    --color-surface: #ffffff;
+    --color-text: #1a1a1a;
+    --color-muted: #6b7280;
+    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: var(--font-body); background: var(--color-bg); color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+  header.topbar { background: var(--color-primary); color: #fff; padding: 20px 16px; border-radius: 0 0 20px 20px; }
+  header.topbar h1 { margin: 0; font-size: 1.15rem; font-weight: 700; }
+  header.topbar p { margin: 4px 0 0; font-size: .8rem; opacity: .85; }
+  main { padding: 16px; flex: 1; }
+  .card { background: var(--color-surface); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: .8rem; color: var(--color-muted); margin-bottom: 4px; }
+  .field input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e2e2; font-size: 1rem; }
+  button.primary { width: 100%; padding: 12px; border-radius: 10px; border: none; background: var(--color-primary); color: #fff; font-weight: 600; font-size: .95rem; cursor: pointer; }
+  button.link { background: none; border: none; color: var(--color-secondary); font-size: .85rem; cursor: pointer; padding: 0; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
+  .tabs button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #e2e2e2; background: #fff; cursor: pointer; font-size: .8rem; }
+  .tabs button.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+  .amalan-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
+  .amalan-item:last-child { border-bottom: none; }
+  .amalan-item .nama { font-size: .92rem; }
+  .amalan-item .kategori { font-size: .72rem; color: var(--color-muted); }
+  .check { width: 26px; height: 26px; border-radius: 8px; border: 2px solid var(--color-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; background: #fff; color: #fff; font-size: .8rem; flex-shrink: 0; }
+  .check.on { background: var(--color-secondary); }
+  .hidden { display: none !important; }
+  .status-bar { font-size: .72rem; color: var(--color-muted); text-align: center; padding: 8px; min-height: 1.2em; }
+  .error { color: #b91c1c; font-size: .82rem; margin-top: 8px; }
+  .empty-state { font-size: .85rem; color: var(--color-muted); text-align: center; padding: 12px 0; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <header class="topbar">
+    <h1 id="headerTitle">Mutabaah Keluarga</h1>
+    <p id="headerSubtitle">Checklist amalan harian keluarga</p>
+  </header>
+  <main>
+
+    <!-- SCREEN: AUTH -->
+    <section id="screenAuth" class="card">
+      <div class="tabs">
+        <button id="tabLogin" class="active" onclick="showAuthTab('login')" type="button">Masuk</button>
+        <button id="tabRegister" onclick="showAuthTab('register')" type="button">Buat Keluarga</button>
+        <button id="tabJoin" onclick="showAuthTab('join')" type="button">Gabung</button>
+      </div>
+
+      <div id="formLogin">
+        <div class="field"><label>Kode Keluarga</label><input id="loginKode" maxlength="6" placeholder="mis. AB12CD"></div>
+        <div class="field"><label>Nama</label><input id="loginNama" placeholder="Nama kamu"></div>
+        <div class="field"><label>PIN</label><input id="loginPin" type="password" inputmode="numeric" placeholder="4-6 digit"></div>
+        <button class="primary" onclick="doLogin()" type="button">Masuk</button>
+      </div>
+
+      <div id="formRegister" class="hidden">
+        <div class="field"><label>Nama Keluarga</label><input id="regNamaKeluarga" placeholder="mis. Keluarga Faturohman"></div>
+        <div class="field"><label>Nama Kamu (Amir)</label><input id="regNamaAmir" placeholder="Nama kepala keluarga"></div>
+        <div class="field"><label>Buat PIN</label><input id="regPin" type="password" inputmode="numeric" placeholder="4-6 digit"></div>
+        <button class="primary" onclick="doRegister()" type="button">Buat Keluarga</button>
+      </div>
+
+      <div id="formJoin" class="hidden">
+        <div class="field"><label>Kode Keluarga (dari Amir)</label><input id="joinKode" maxlength="6" placeholder="mis. AB12CD"></div>
+        <div class="field"><label>Nama Kamu</label><input id="joinNama" placeholder="Nama kamu"></div>
+        <div class="field"><label>Buat PIN</label><input id="joinPin" type="password" inputmode="numeric" placeholder="4-6 digit"></div>
+        <button class="primary" onclick="doJoin()" type="button">Gabung Keluarga</button>
+      </div>
+
+      <p class="error hidden" id="authError"></p>
+    </section>
+
+    <!-- SCREEN: CHECKLIST -->
+    <section id="screenApp" class="hidden">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <strong id="userNama"></strong>
+            <div style="font-size:.75rem;color:var(--color-muted)" id="userPeran"></div>
+          </div>
+          <button class="link" onclick="logout()" type="button">Keluar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="amalanList"></div>
+      </div>
+
+      <div class="card" id="amirPanel">
+        <strong style="font-size:.85rem;">Kode Undangan Keluarga</strong>
+        <div style="font-size:1.4rem;letter-spacing:2px;font-weight:700;margin-top:4px;" id="kodeInviteDisplay"></div>
+        <p style="font-size:.75rem;color:var(--color-muted);margin-bottom:0;">Bagikan kode ini ke anggota keluarga untuk bergabung.</p>
+      </div>
+    </section>
+
+    <p class="status-bar" id="syncStatus"></p>
+  </main>
+</div>
+
+<script>
+/* ================= KONFIGURASI ================= */
+// TODO: ganti dengan URL Web App hasil `clasp deploy` (lihat README.md).
+const API_URL = 'https://script.google.com/macros/s/GANTI_DENGAN_DEPLOYMENT_ID/exec';
+
+/* ================= STATE ================= */
+let state = {
+  token: localStorage.getItem('mtbk_token') || null,
+  keluarga: null,
+  user: null,
+  amalan: [],
+  checkins: {},   // key: `${tanggal}|${amalan_id}` -> value
+  outbox: JSON.parse(localStorage.getItem('mtbk_outbox') || '[]')
+};
+
+/* ================= API HELPER ================= */
+async function callApi(action, payload) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(Object.assign({ action, token: state.token }, payload || {}))
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'unknown_error');
+  return json;
+}
+
+/* ================= AUTH ================= */
+function showAuthTab(tab) {
+  ['login', 'register', 'join'].forEach(t => {
+    document.getElementById('form' + capitalize(t)).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab' + capitalize(t)).classList.toggle('active', t === tab);
+  });
+  hideAuthError();
+}
+function capitalize(s) { return s[0].toUpperCase() + s.slice(1); }
+
+async function doRegister() {
+  try {
+    const r = await callApi('register_keluarga', {
+      nama_keluarga: val('regNamaKeluarga'), nama_amir: val('regNamaAmir'), pin: val('regPin')
+    });
+    saveSession(r.token);
+    alert('Keluarga berhasil dibuat!\nKode undangan: ' + r.kode_invite + '\n\nSimpan kode ini untuk mengundang anggota.');
+    boot();
+  } catch (e) { showAuthError(e.message); }
+}
+
+async function doJoin() {
+  try {
+    const r = await callApi('join_keluarga', { kode_invite: val('joinKode'), nama: val('joinNama'), pin: val('joinPin') });
+    saveSession(r.token);
+    boot();
+  } catch (e) { showAuthError(e.message); }
+}
+
+async function doLogin() {
+  try {
+    const r = await callApi('login', { kode_invite: val('loginKode'), nama: val('loginNama'), pin: val('loginPin') });
+    saveSession(r.token);
+    boot();
+  } catch (e) { showAuthError(e.message); }
+}
+
+function saveSession(token) {
+  state.token = token;
+  localStorage.setItem('mtbk_token', token);
+}
+
+function logout() {
+  localStorage.removeItem('mtbk_token');
+  localStorage.removeItem('mtbk_outbox');
+  location.reload();
+}
+
+function val(id) { return document.getElementById(id).value.trim(); }
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = pesanError(msg);
+  el.classList.remove('hidden');
+}
+function hideAuthError() { document.getElementById('authError').classList.add('hidden'); }
+
+function pesanError(kode) {
+  const map = {
+    field_kurang: 'Lengkapi semua kolom dulu ya.',
+    kode_invite_tidak_ditemukan: 'Kode keluarga tidak ditemukan.',
+    user_tidak_ditemukan: 'Nama tidak ditemukan di keluarga ini.',
+    pin_salah: 'PIN salah.'
+  };
+  return map[kode] || kode;
+}
+
+/* ================= BOOTSTRAP & CHECKLIST ================= */
+async function boot() {
+  if (!state.token) return; // tetap di screenAuth
+  try {
+    const data = await callApi('get_state', { since: todayMinus(7) });
+    state.user = data.user; state.keluarga = data.keluarga; state.amalan = data.amalan;
+    data.checkins.forEach(c => state.checkins[c.tanggal + '|' + c.amalan_id] = c.value);
+    applyTema(data.keluarga.tema);
+    renderApp();
+    flushOutbox();
+  } catch (e) {
+    console.error(e);
+    logout();
+  }
+}
+
+function applyTema(tema) {
+  const root = document.documentElement.style;
+  if (tema.primary) root.setProperty('--color-primary', tema.primary);
+  if (tema.secondary) root.setProperty('--color-secondary', tema.secondary);
+  if (tema.font) root.setProperty('--font-body', `'${tema.font}', system-ui, sans-serif`);
+  document.getElementById('headerTitle').textContent = state.keluarga.nama_keluarga;
+}
+
+function renderApp() {
+  document.getElementById('screenAuth').classList.add('hidden');
+  document.getElementById('screenApp').classList.remove('hidden');
+  document.getElementById('userNama').textContent = state.user.nama;
+  document.getElementById('userPeran').textContent = state.user.peran === 'amir' ? 'Amir Keluarga' : 'Anggota';
+  document.getElementById('amirPanel').classList.toggle('hidden', state.user.peran !== 'amir');
+  document.getElementById('kodeInviteDisplay').textContent = state.keluarga.kode_invite;
+
+  const today = todayStr();
+  const list = document.getElementById('amalanList');
+  list.innerHTML = '';
+
+  if (!state.amalan.length) {
+    list.innerHTML = '<p class="empty-state">Amir belum menambahkan amalan. ' +
+      (state.user.peran === 'amir' ? 'Tambahkan lewat panel admin.' : 'Tunggu Amir menyusunnya.') + '</p>';
+    return;
+  }
+
+  state.amalan.slice().sort((a, b) => (a.urutan || 0) - (b.urutan || 0)).forEach(a => {
+    const checked = !!state.checkins[today + '|' + a.amalan_id];
+    const row = document.createElement('div');
+    row.className = 'amalan-item';
+    row.innerHTML = `
+      <div><div class="nama">${escapeHtml(a.nama)}</div><div class="kategori">${escapeHtml(a.kategori)}</div></div>
+      <div class="check ${checked ? 'on' : ''}" data-id="${a.amalan_id}">${checked ? '✓' : ''}</div>
+    `;
+    row.querySelector('.check').onclick = () => toggleAmalan(a.amalan_id);
+    list.appendChild(row);
+  });
+}
+
+function toggleAmalan(amalanId) {
+  const today = todayStr();
+  const key = today + '|' + amalanId;
+  const newValue = !state.checkins[key];
+  state.checkins[key] = newValue;
+  renderApp();
+  queueSync({ tanggal: today, amalan_id: amalanId, value: newValue });
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ================= OFFLINE-FIRST SYNC =================
+ * Setiap perubahan checklist masuk ke outbox lokal dulu (UI langsung update),
+ * baru dikirim batch ke backend tiap ~3 detik setelah aksi terakhir, atau
+ * tiap 15 detik / saat koneksi online kembali. Ini supaya UI tidak pernah
+ * menunggu network (latensi Apps Script ~1-3 detik/call). */
+function queueSync(item) {
+  state.outbox.push(item);
+  localStorage.setItem('mtbk_outbox', JSON.stringify(state.outbox));
+  scheduleFlush();
+}
+
+let flushTimer = null;
+function scheduleFlush() {
+  clearTimeout(flushTimer);
+  flushTimer = setTimeout(flushOutbox, 3000);
+}
+
+async function flushOutbox() {
+  if (!state.outbox.length || !navigator.onLine || !state.token) return;
+  const items = state.outbox.splice(0, state.outbox.length);
+  document.getElementById('syncStatus').textContent = 'Menyimpan...';
+  try {
+    await callApi('upsert_checkin', { items });
+    localStorage.setItem('mtbk_outbox', JSON.stringify(state.outbox));
+    document.getElementById('syncStatus').textContent = 'Tersimpan ✓';
+  } catch (e) {
+    state.outbox = items.concat(state.outbox);
+    localStorage.setItem('mtbk_outbox', JSON.stringify(state.outbox));
+    document.getElementById('syncStatus').textContent = 'Offline — akan disinkron nanti';
+  }
+}
+
+window.addEventListener('online', flushOutbox);
+setInterval(flushOutbox, 15000);
+
+/* ================= UTIL TANGGAL ================= */
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+function todayMinus(days) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString().slice(0, 10); }
+
+/* ================= INIT ================= */
+boot();
+</script>
+</body>
+</html>

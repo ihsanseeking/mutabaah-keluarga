@@ -1,0 +1,149 @@
+/**
+ * Utils.js — helper Sheet, hashing, token, dan setup skema.
+ * Lihat docs/ERD.md untuk penjelasan tiap tabel/tab.
+ */
+
+// Isi dengan Spreadsheet ID kalau script tidak container-bound.
+// Kosongkan (null) kalau script dibuat via `clasp create --type webapp`
+// yang otomatis container-bound ke Spreadsheet aktifnya.
+var SHEET_ID = null;
+
+var SCHEMA = {
+  keluarga: ['keluarga_id', 'nama_keluarga', 'kode_invite', 'amir_user_id',
+    'tema_primary', 'tema_secondary', 'tema_font', 'tema_mode', 'dibuat_at'],
+  users: ['user_id', 'keluarga_id', 'nama', 'peran', 'pin_hash', 'pin_salt', 'aktif', 'dibuat_at'],
+  amalan_config: ['amalan_id', 'keluarga_id', 'nama', 'kategori', 'tipe', 'target',
+    'urutan', 'hari_spesifik', 'status', 'dibuat_oleh', 'dibuat_at'],
+  checkin: ['checkin_id', 'keluarga_id', 'user_id', 'tanggal', 'amalan_id', 'value', 'updated_at']
+};
+
+/**
+ * Jalankan SEKALI dari editor Apps Script setelah deploy pertama kali,
+ * untuk membuat semua tab & header sesuai docs/ERD.md.
+ */
+function setupSheets() {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  Object.keys(SCHEMA).forEach(function (name) {
+    var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+    sheet.getRange(1, 1, 1, SCHEMA[name].length).setValues([SCHEMA[name]]);
+    sheet.setFrozenRows(1);
+  });
+}
+
+function getSheet(name) {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(name);
+  if (!sheet) throw new Error('Sheet tidak ditemukan: ' + name + ' — jalankan setupSheets() dulu.');
+  return sheet;
+}
+
+function sheetToObjects(sheet) {
+  var data = sheet.getDataRange().getValues();
+  var headers = data.shift();
+  return data.map(function (row) {
+    var obj = {};
+    headers.forEach(function (h, i) { obj[h] = row[i]; });
+    return obj;
+  });
+}
+
+function appendRow(sheet, obj, headers) {
+  var row = headers.map(function (h) { return obj[h] !== undefined ? obj[h] : ''; });
+  sheet.appendRow(row);
+}
+
+function findRow(sheetName, key, value) {
+  var rows = sheetToObjects(getSheet(sheetName));
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i][key] === value) return rows[i];
+  }
+  return null;
+}
+
+function updateRow(sheetName, key, value, patch) {
+  var sheet = getSheet(sheetName);
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var keyIdx = headers.indexOf(key);
+  for (var r = 1; r < data.length; r++) {
+    if (data[r][keyIdx] === value) {
+      Object.keys(patch).forEach(function (k) {
+        var idx = headers.indexOf(k);
+        if (idx > -1) sheet.getRange(r + 1, idx + 1).setValue(patch[k]);
+      });
+      return true;
+    }
+  }
+  return false;
+}
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function bytesToHex(bytes) {
+  return bytes.map(function (b) { return ((b < 0 ? b + 256 : b).toString(16)).padStart(2, '0'); }).join('');
+}
+
+function hashPin(pin, salt) {
+  var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pin + ':' + salt);
+  return bytesToHex(raw);
+}
+
+function tokenSecret_() {
+  var secret = PropertiesService.getScriptProperties().getProperty('TOKEN_SECRET');
+  if (!secret) throw new Error('TOKEN_SECRET belum di-set di Script Properties.');
+  return secret;
+}
+
+function generateToken(userId) {
+  var payload = userId + '.' + Date.now();
+  var sig = bytesToHex(Utilities.computeHmacSha256Signature(payload, tokenSecret_()));
+  return Utilities.base64EncodeWebSafe(payload) + '.' + sig;
+}
+
+function verifyToken(token) {
+  if (!token) throw new Error('token_invalid');
+  var parts = token.split('.');
+  if (parts.length !== 2) throw new Error('token_invalid');
+  var payload = Utilities.newBlob(Utilities.base64DecodeWebSafe(parts[0])).getDataAsString();
+  var expectedSig = bytesToHex(Utilities.computeHmacSha256Signature(payload, tokenSecret_()));
+  if (expectedSig !== parts[1]) throw new Error('token_invalid');
+  return payload.split('.')[0]; // user_id
+}
+
+function withLock(fn) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    return fn();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function generateId(prefix) {
+  return prefix + '_' + Utilities.getUuid().split('-')[0];
+}
+
+function generateInviteCode() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // tanpa 0/O/1/I biar gak ambigu dibaca
+  var code = '';
+  for (var i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  return code;
+}
+
+/** Ambil user dari token, lempar error kalau tidak ada. */
+function requireUser(token) {
+  var userId = verifyToken(token);
+  var user = findRow('users', 'user_id', userId);
+  if (!user || !user.aktif) throw new Error('user_tidak_ditemukan');
+  return user;
+}
+
+/** Sama seperti requireUser, tapi juga memastikan perannya 'amir'. */
+function requireAmir(token) {
+  var user = requireUser(token);
+  if (user.peran !== 'amir') throw new Error('forbidden');
+  return user;
+}

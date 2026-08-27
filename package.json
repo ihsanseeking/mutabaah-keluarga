@@ -1,0 +1,12 @@
+{
+  "name": "mutabaah-keluarga",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mutabaah keluarga multi-tenant — Amir menyusun poin amalan, anggota checklist harian offline-first.",
+  "scripts": {
+    "backend:login": "cd apps-script && clasp login",
+    "backend:push": "cd apps-script && clasp push",
+    "backend:deploy": "cd apps-script && clasp deploy",
+    "backend:open": "cd apps-script && clasp open"
+  }
+}
