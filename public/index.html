@@ -89,12 +89,22 @@
         <div class="field"><label>Nama</label><input id="loginNama" placeholder="Nama kamu"></div>
         <div class="field"><label>PIN</label><input id="loginPin" type="password" inputmode="numeric" placeholder="4-6 digit"></div>
         <button class="primary" onclick="doLogin()" type="button">Masuk</button>
+        <button class="link" style="display:block;margin-top:10px;text-align:center;width:100%;" onclick="toggleLoginMode()" type="button">atau masuk pakai No HP</button>
+      </div>
+
+      <div id="formLoginHp" class="hidden">
+        <div class="field"><label>No HP</label><input id="loginHpNoHp" type="tel" placeholder="mis. 081234567890"></div>
+        <div class="field"><label>PIN</label><input id="loginHpPin" type="password" inputmode="numeric" placeholder="4-6 digit"></div>
+        <button class="primary" onclick="doLoginByPhone()" type="button">Masuk</button>
+        <p style="font-size:.72rem;color:var(--color-muted);text-align:center;margin-top:6px;">Cuma bisa kalau No HP ini sudah pernah didaftarkan.</p>
+        <button class="link" style="display:block;margin-top:4px;text-align:center;width:100%;" onclick="toggleLoginMode()" type="button">atau masuk pakai Kode Keluarga</button>
       </div>
 
       <div id="formRegister" class="hidden">
         <div class="field"><label>Nama Keluarga</label><input id="regNamaKeluarga" placeholder="mis. Keluarga Faturohman"></div>
         <div class="field"><label>Nama Kamu (Amir)</label><input id="regNamaAmir" placeholder="Nama kepala keluarga"></div>
         <div class="field"><label>Buat PIN</label><input id="regPin" type="password" inputmode="numeric" placeholder="4-6 digit"></div>
+        <div class="field"><label>No HP (opsional)</label><input id="regNoHp" type="tel" placeholder="biar bisa login tanpa kode nanti"></div>
         <button class="primary" onclick="doRegister()" type="button">Buat Keluarga</button>
       </div>
 
@@ -102,6 +112,7 @@
         <div class="field"><label>Kode Keluarga (dari Amir)</label><input id="joinKode" maxlength="6" placeholder="mis. AB12CD"></div>
         <div class="field"><label>Nama Kamu</label><input id="joinNama" placeholder="Nama kamu"></div>
         <div class="field"><label>Buat PIN</label><input id="joinPin" type="password" inputmode="numeric" placeholder="4-6 digit"></div>
+        <div class="field"><label>No HP (opsional)</label><input id="joinNoHp" type="tel" placeholder="biar bisa login tanpa kode nanti"></div>
         <button class="primary" onclick="doJoin()" type="button">Gabung Keluarga</button>
       </div>
 
@@ -117,6 +128,13 @@
             <div style="font-size:.75rem;color:var(--color-muted)" id="userPeran"></div>
           </div>
           <button class="link" onclick="logout()" type="button">Keluar</button>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0;">
+          <button class="link" onclick="toggleNoHpForm()" type="button" id="noHpToggleBtn">+ Atur No HP (biar bisa masuk tanpa kode)</button>
+          <div id="noHpForm" class="hidden" style="margin-top:8px;display:flex;gap:8px;">
+            <input id="profilNoHp" type="tel" placeholder="mis. 081234567890" style="flex:1;">
+            <button class="primary" style="width:auto;padding:10px 16px;" onclick="handleUpdateNoHp()" type="button">Simpan</button>
+          </div>
         </div>
       </div>
 
@@ -255,6 +273,7 @@ async function callApi(action, payload) {
 
 /* ================= AUTH ================= */
 function showAuthTab(tab) {
+  document.getElementById('formLoginHp').classList.add('hidden');
   ['login', 'register', 'join'].forEach(t => {
     document.getElementById('form' + capitalize(t)).classList.toggle('hidden', t !== tab);
     document.getElementById('tab' + capitalize(t)).classList.toggle('active', t === tab);
@@ -263,10 +282,17 @@ function showAuthTab(tab) {
 }
 function capitalize(s) { return s[0].toUpperCase() + s.slice(1); }
 
+function toggleLoginMode() {
+  document.getElementById('formLogin').classList.toggle('hidden');
+  document.getElementById('formLoginHp').classList.toggle('hidden');
+  hideAuthError();
+}
+
 async function doRegister() {
   try {
     const r = await callApi('register_keluarga', {
-      nama_keluarga: val('regNamaKeluarga'), nama_amir: val('regNamaAmir'), pin: val('regPin')
+      nama_keluarga: val('regNamaKeluarga'), nama_amir: val('regNamaAmir'), pin: val('regPin'),
+      no_hp: val('regNoHp')
     });
     saveSession(r.token);
     alert('Keluarga berhasil dibuat!\nKode undangan: ' + r.kode_invite + '\n\nSimpan kode ini untuk mengundang anggota.');
@@ -277,7 +303,7 @@ async function doRegister() {
 async function doJoin() {
   try {
     const kode = val('joinKode');
-    const r = await callApi('join_keluarga', { kode_invite: kode, nama: val('joinNama'), pin: val('joinPin') });
+    const r = await callApi('join_keluarga', { kode_invite: kode, nama: val('joinNama'), pin: val('joinPin'), no_hp: val('joinNoHp') });
     localStorage.setItem('mtbk_last_kode', kode.toUpperCase());
     saveSession(r.token);
     boot();
@@ -289,6 +315,14 @@ async function doLogin() {
     const kode = val('loginKode');
     const r = await callApi('login', { kode_invite: kode, nama: val('loginNama'), pin: val('loginPin') });
     localStorage.setItem('mtbk_last_kode', kode.toUpperCase());
+    saveSession(r.token);
+    boot();
+  } catch (e) { showAuthError(e.message); }
+}
+
+async function doLoginByPhone() {
+  try {
+    const r = await callApi('login_hp', { no_hp: val('loginHpNoHp'), pin: val('loginHpPin') });
     saveSession(r.token);
     boot();
   } catch (e) { showAuthError(e.message); }
@@ -309,6 +343,23 @@ function logout() {
   location.reload();
 }
 
+function toggleNoHpForm() {
+  document.getElementById('noHpForm').classList.toggle('hidden');
+}
+
+async function handleUpdateNoHp() {
+  const noHp = val('profilNoHp');
+  if (!noHp) return;
+  try {
+    await callApi('update_no_hp', { no_hp: noHp });
+    alert('No HP tersimpan! Sekarang bisa dipakai buat masuk tanpa kode keluarga.');
+    document.getElementById('noHpForm').classList.add('hidden');
+    document.getElementById('profilNoHp').value = '';
+  } catch (e) {
+    alert(pesanError(e.message));
+  }
+}
+
 function val(id) { return document.getElementById(id).value.trim(); }
 function showAuthError(msg) {
   const el = document.getElementById('authError');
@@ -326,7 +377,9 @@ function pesanError(kode) {
     forbidden: 'Cuma Amir yang bisa melakukan ini.',
     amalan_tidak_ditemukan: 'Amalan tidak ditemukan.',
     profil_tidak_valid: 'Profil tidak valid.',
-    nama_sudah_terdaftar: 'Nama ini sudah terdaftar di keluarga ini. Coba menu Masuk (bukan Gabung).'
+    nama_sudah_terdaftar: 'Nama ini sudah terdaftar di keluarga ini. Coba menu Masuk (bukan Gabung).',
+    no_hp_sudah_dipakai: 'No HP ini sudah dipakai akun lain.',
+    no_hp_tidak_ditemukan: 'Belum ada akun dengan No HP ini. Masuk pakai Kode Keluarga dulu, lalu daftarkan No HP-nya.'
   };
   return map[kode] || kode;
 }

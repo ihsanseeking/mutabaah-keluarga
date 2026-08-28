@@ -17,23 +17,24 @@ Semua action selain `register_keluarga` / `join_keluarga` / `login` membutuhkan 
 ---
 
 ## `register_keluarga`
-Membuat keluarga baru sekaligus akun Amir pertama.
+Membuat keluarga baru sekaligus akun Amir pertama. `no_hp` opsional — kalau diisi, harus unik di seluruh sistem (dipakai buat login lewat `login_hp` nanti).
 
 **Request**
 ```json
-{ "action": "register_keluarga", "nama_keluarga": "Keluarga Faturohman", "nama_amir": "Ihsan", "pin": "1234" }
+{ "action": "register_keluarga", "nama_keluarga": "Keluarga Faturohman", "nama_amir": "Ihsan", "pin": "1234", "no_hp": "081234567890" }
 ```
 **Response**
 ```json
 { "ok": true, "keluarga_id": "kel_ab12cd34", "kode_invite": "AB12CD", "token": "..." }
 ```
+**Error** (tambahan): `no_hp_sudah_dipakai`
 
 ## `join_keluarga`
-Anggota bergabung ke keluarga yang sudah ada memakai kode undangan dari Amir.
+Anggota bergabung ke keluarga yang sudah ada memakai kode undangan dari Amir. `no_hp` juga opsional & harus unik.
 
 **Request**
 ```json
-{ "action": "join_keluarga", "kode_invite": "AB12CD", "nama": "Yadi", "pin": "5678" }
+{ "action": "join_keluarga", "kode_invite": "AB12CD", "nama": "Yadi", "pin": "5678", "no_hp": "081234567891" }
 ```
 **Response**
 ```json
@@ -50,6 +51,26 @@ Anggota bergabung ke keluarga yang sudah ada memakai kode undangan dari Amir.
 { "ok": true, "user_id": "usr_...", "peran": "anggota", "keluarga_id": "kel_...", "token": "..." }
 ```
 **Error**: `kode_invite_tidak_ditemukan` | `user_tidak_ditemukan` | `pin_salah`
+
+## `login_hp`
+Login tanpa kode undangan — cukup No HP (yang sebelumnya didaftarkan/di-update lewat `update_no_hp`) + PIN. Cocok buat device baru saat lupa kode undangan.
+
+**Request**
+```json
+{ "action": "login_hp", "no_hp": "081234567890", "pin": "5678" }
+```
+**Response**: sama seperti `login` — `{ "ok": true, "user_id": "...", "peran": "...", "keluarga_id": "...", "token": "..." }`
+**Error**: `no_hp_tidak_ditemukan` | `pin_salah`
+
+## `update_no_hp`
+Tambah/ubah No HP akun sendiri, kapan saja setelah login (tidak wajib diisi saat daftar/gabung).
+
+**Request**
+```json
+{ "action": "update_no_hp", "token": "...", "no_hp": "081234567890" }
+```
+**Response**: `{ "ok": true }`
+**Error**: `no_hp_sudah_dipakai` — nomor sudah dipakai akun aktif lain
 
 ## `get_state`
 Bootstrap data setelah login/buka app: info keluarga, tema, daftar amalan aktif, dan checkin milik satu **profil** sejak tanggal `since`. `profile_user_id` opsional — kosongkan untuk profil diri sendiri, atau isi `user_id` seorang anak (peran `anak`) di keluarga yang sama supaya orang tua bisa mengisi checklist atas nama anaknya.
@@ -188,5 +209,7 @@ Daftar semua anggota keluarga (amir/anggota/anak) — dipakai buat profile switc
 | `amalan_tidak_ditemukan` | `amalan_id` tidak ada atau bukan milik keluarga token tsb |
 | `profil_tidak_valid` | `profile_user_id` bukan diri sendiri atau bukan anak di keluarga yang sama |
 | `nama_sudah_terdaftar` | Nama sudah dipakai anggota/anak lain yang aktif di keluarga yang sama (`join_keluarga`/`dependent_create`) |
+| `no_hp_sudah_dipakai` | No HP sudah dipakai akun aktif lain (lintas keluarga) |
+| `no_hp_tidak_ditemukan` | Tidak ada akun aktif dengan No HP tsb (`login_hp`) |
 | `token_invalid` | Token rusak/tidak valid |
 | `unknown_action` | `action` tidak dikenali |

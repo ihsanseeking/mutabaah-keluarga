@@ -33,6 +33,8 @@ function getActionHandler_(action) {
     register_keluarga: Auth.registerKeluarga,
     join_keluarga: Auth.joinKeluarga,
     login: Auth.login,
+    login_hp: Auth.loginByPhone,
+    update_no_hp: Auth.updateNoHp,
     update_tema: Auth.updateTema,
     get_state: Checkin.getState,
     upsert_checkin: Checkin.upsertCheckin,

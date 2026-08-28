@@ -10,7 +10,7 @@ var SHEET_ID = '1MbbbcKpDPZ0mtXb0TL4NqEqprBOFzp8NfX0iByf2y_g';
 var SCHEMA = {
   keluarga: ['keluarga_id', 'nama_keluarga', 'kode_invite', 'amir_user_id',
     'tema_primary', 'tema_secondary', 'tema_font', 'tema_mode', 'dibuat_at'],
-  users: ['user_id', 'keluarga_id', 'nama', 'peran', 'pin_hash', 'pin_salt', 'aktif', 'dibuat_at'],
+  users: ['user_id', 'keluarga_id', 'nama', 'peran', 'pin_hash', 'pin_salt', 'no_hp', 'aktif', 'dibuat_at'],
   amalan_config: ['amalan_id', 'keluarga_id', 'nama', 'kategori', 'tipe', 'target',
     'urutan', 'hari_spesifik', 'target_user_ids', 'status', 'dibuat_oleh', 'dibuat_at'],
   checkin: ['checkin_id', 'keluarga_id', 'user_id', 'tanggal', 'amalan_id', 'value', 'updated_at']
@@ -146,6 +146,19 @@ function bytesToHex(bytes) {
 function hashPin(pin, salt) {
   var raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pin + ':' + salt);
   return bytesToHex(raw);
+}
+
+/**
+ * Samakan format nomor HP Indonesia (08xx / +628xx / 628xx) jadi satu bentuk
+ * kanonik "62xxxxxxxxxx", supaya perbandingan uniqueness & lookup konsisten
+ * berapa pun format yang diketik user.
+ */
+function normalizePhone_(raw) {
+  if (!raw) return '';
+  var digits = String(raw).replace(/\D/g, '');
+  if (digits.indexOf('0') === 0) digits = '62' + digits.slice(1);
+  else if (digits.indexOf('62') !== 0) digits = '62' + digits;
+  return digits;
 }
 
 function tokenSecret_() {

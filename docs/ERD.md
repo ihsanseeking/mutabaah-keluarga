@@ -84,6 +84,7 @@ Setiap tab punya baris header di baris 1, dibuat otomatis oleh fungsi `setupShee
 | peran | TEXT | `amir` \| `anggota` \| `anak` (profil anak, tanpa PIN — dicentang oleh orang tua via profile switcher) |
 | pin_hash | TEXT | SHA-256(pin + salt) |
 | pin_salt | TEXT | UUID unik per user |
+| no_hp | TEXT | opsional, dinormalisasi ke format `62xxxxxxxxxx`. Harus unik di seluruh sistem (lintas keluarga) — dipakai buat login tanpa kode undangan |
 | aktif | BOOLEAN | soft-delete anggota |
 | dibuat_at | DATETIME | |
 
