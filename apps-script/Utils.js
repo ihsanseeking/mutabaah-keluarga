@@ -48,6 +48,40 @@ function migrateSchema() {
   });
 }
 
+/**
+ * Jalankan SEKALI dari editor Apps Script kalau ada anggota/anak dobel
+ * (mis. gara-gara sempat coba "Gabung Keluarga" berkali-kali sebelum
+ * `nama_sudah_terdaftar` dicegah di Auth.js/Anggota.js). Buat tiap
+ * kombinasi keluarga+nama yang sama, baris PALING AWAL dipertahankan
+ * (jadi PIN yang berlaku = PIN dari percobaan gabung yang pertama),
+ * baris-baris duplikatnya dihapus. Data checkin milik baris yang dihapus
+ * TIDAK ikut dipindah/dihapus — kalau perlu, tangani manual dulu.
+ */
+function cleanupDuplicateUsers() {
+  var sheet = getSheet('users');
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var idxKeluarga = headers.indexOf('keluarga_id');
+  var idxNama = headers.indexOf('nama');
+
+  var seen = {};
+  var rowsToDelete = [];
+  for (var r = 1; r < data.length; r++) {
+    var key = data[r][idxKeluarga] + '|' + String(data[r][idxNama]).trim().toLowerCase();
+    if (seen[key] === undefined) {
+      seen[key] = r;
+    } else {
+      rowsToDelete.push(r + 1); // +1: baris sheet mulai dari 1, data[0] = header
+    }
+  }
+
+  rowsToDelete.sort(function (a, b) { return b - a; }); // hapus dari bawah biar index gak geser
+  rowsToDelete.forEach(function (rowNum) { sheet.deleteRow(rowNum); });
+
+  Logger.log('Baris duplikat dihapus: ' + rowsToDelete.length);
+  return rowsToDelete.length;
+}
+
 function getSheet(name) {
   var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(name);
