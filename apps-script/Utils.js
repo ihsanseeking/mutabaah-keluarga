@@ -13,7 +13,7 @@ var SCHEMA = {
     'tema_primary', 'tema_secondary', 'tema_font', 'tema_mode', 'dibuat_at'],
   users: ['user_id', 'keluarga_id', 'nama', 'peran', 'pin_hash', 'pin_salt', 'aktif', 'dibuat_at'],
   amalan_config: ['amalan_id', 'keluarga_id', 'nama', 'kategori', 'tipe', 'target',
-    'urutan', 'hari_spesifik', 'status', 'dibuat_oleh', 'dibuat_at'],
+    'urutan', 'hari_spesifik', 'target_user_ids', 'status', 'dibuat_oleh', 'dibuat_at'],
   checkin: ['checkin_id', 'keluarga_id', 'user_id', 'tanggal', 'amalan_id', 'value', 'updated_at']
 };
 
@@ -27,6 +27,25 @@ function setupSheets() {
     var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
     sheet.getRange(1, 1, 1, SCHEMA[name].length).setValues([SCHEMA[name]]);
     sheet.setFrozenRows(1);
+  });
+}
+
+/**
+ * Jalankan SEKALI dari editor Apps Script kalau Sheet sudah pernah dibuat
+ * lewat setupSheets() versi lama (sebelum kolom target_user_ids ditambahkan) —
+ * cuma nambah header kolom yang belum ada, gak menyentuh data yang sudah ada.
+ */
+function migrateSchema() {
+  Object.keys(SCHEMA).forEach(function (name) {
+    var sheet = getSheet(name);
+    var lastCol = Math.max(sheet.getLastColumn(), 1);
+    var existing = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    SCHEMA[name].forEach(function (col) {
+      if (existing.indexOf(col) === -1) {
+        sheet.getRange(1, existing.length + 1).setValue(col);
+        existing.push(col);
+      }
+    });
   });
 }
 
@@ -47,7 +66,13 @@ function sheetToObjects(sheet) {
   });
 }
 
-function appendRow(sheet, obj, headers) {
+/**
+ * Selalu baca urutan header LANGSUNG dari sheet (bukan dari SCHEMA) — supaya
+ * tetap benar walau sheet lama sudah dimigrasi dan kolom barunya nempel di
+ * ujung, bukan di posisi yang didefinisikan di SCHEMA.
+ */
+function appendRow(sheet, obj) {
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var row = headers.map(function (h) { return obj[h] !== undefined ? obj[h] : ''; });
   sheet.appendRow(row);
 }

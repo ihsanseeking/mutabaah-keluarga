@@ -81,7 +81,7 @@ Setiap tab punya baris header di baris 1, dibuat otomatis oleh fungsi `setupShee
 | user_id | TEXT (PK) | format `usr_xxxxxxxx` |
 | keluarga_id | TEXT (FK) | |
 | nama | TEXT | |
-| peran | TEXT | `amir` \| `anggota` |
+| peran | TEXT | `amir` \| `anggota` \| `anak` (profil anak, tanpa PIN — dicentang oleh orang tua via profile switcher) |
 | pin_hash | TEXT | SHA-256(pin + salt) |
 | pin_salt | TEXT | UUID unik per user |
 | aktif | BOOLEAN | soft-delete anggota |
@@ -98,9 +98,12 @@ Setiap tab punya baris header di baris 1, dibuat otomatis oleh fungsi `setupShee
 | target | NUMBER | dipakai kalau tipe=`counter` (mis. target 100x dzikir) |
 | urutan | NUMBER | urutan tampil di checklist |
 | hari_spesifik | TEXT | kosong = tiap hari; atau mis. `"jumat"` |
-| status | TEXT | `aktif` \| `nonaktif` (siap `diajukan`/`ditolak` di v1.1 tanpa migrasi skema) |
-| dibuat_oleh | TEXT (FK → users) | |
+| target_user_ids | TEXT | kosong = berlaku buat semua anggota; atau daftar `user_id` dipisah koma = khusus anggota tsb |
+| status | TEXT | `aktif` \| `nonaktif` \| `diajukan` (usulan anggota non-amir, menunggu approve) \| `ditolak` |
+| dibuat_oleh | TEXT (FK → users) | siapa yang mengajukan/membuat |
 | dibuat_at | DATETIME | |
+
+> Kolom `target_user_ids` ditambahkan setelah rilis awal. Kalau Sheet sudah pernah dibuat lewat `setupSheets()` versi lama, jalankan `migrateSchema()` sekali dari editor Apps Script untuk menambahkan kolom ini tanpa mengganggu data yang sudah ada.
 
 ### `checkin`
 | Kolom | Tipe | Keterangan |

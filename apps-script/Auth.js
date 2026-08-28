@@ -17,12 +17,12 @@ var Auth = {
         keluarga_id: keluargaId, nama_keluarga: p.nama_keluarga, kode_invite: kodeInvite,
         amir_user_id: userId, tema_primary: '#1b4332', tema_secondary: '#40916c',
         tema_font: 'Plus Jakarta Sans', tema_mode: 'light', dibuat_at: new Date()
-      }, SCHEMA.keluarga);
+      });
 
       appendRow(getSheet('users'), {
         user_id: userId, keluarga_id: keluargaId, nama: p.nama_amir, peran: 'amir',
         pin_hash: hashPin(p.pin, salt), pin_salt: salt, aktif: true, dibuat_at: new Date()
-      }, SCHEMA.users);
+      });
 
       return { ok: true, keluarga_id: keluargaId, kode_invite: kodeInvite, token: generateToken(userId) };
     });
@@ -39,7 +39,7 @@ var Auth = {
       appendRow(getSheet('users'), {
         user_id: userId, keluarga_id: keluarga.keluarga_id, nama: p.nama, peran: 'anggota',
         pin_hash: hashPin(p.pin, salt), pin_salt: salt, aktif: true, dibuat_at: new Date()
-      }, SCHEMA.users);
+      });
 
       return { ok: true, keluarga_id: keluarga.keluarga_id, token: generateToken(userId) };
     });

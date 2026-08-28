@@ -10,6 +10,7 @@ Diturunkan dari konsep: Mutabaah Fidin Jenggot Merah
 | Versi | Tanggal | Perubahan |
 |---|---|---|
 | 1.0 | 2026-08-27 | Draft awal MVP: Amir-only config amalan, fokus istilah "Keluarga", backend Google Sheets + Apps Script |
+| 1.1 | 2026-08-28 | Profil anak (checklist by proxy oleh orang tua), amalan bertarget per-anggota, usulan amalan dari anggota (approve/reject oleh Amir), katalog rekomendasi amalan |
 
 ---
 

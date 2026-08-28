@@ -52,37 +52,39 @@ Anggota bergabung ke keluarga yang sudah ada memakai kode undangan dari Amir.
 **Error**: `kode_invite_tidak_ditemukan` | `user_tidak_ditemukan` | `pin_salah`
 
 ## `get_state`
-Bootstrap data setelah login/buka app: info keluarga, tema, daftar amalan aktif, dan checkin milik user sejak tanggal `since`.
+Bootstrap data setelah login/buka app: info keluarga, tema, daftar amalan aktif, dan checkin milik satu **profil** sejak tanggal `since`. `profile_user_id` opsional — kosongkan untuk profil diri sendiri, atau isi `user_id` seorang anak (peran `anak`) di keluarga yang sama supaya orang tua bisa mengisi checklist atas nama anaknya.
 
 **Request**
 ```json
-{ "action": "get_state", "token": "...", "since": "2026-08-20" }
+{ "action": "get_state", "token": "...", "since": "2026-08-20", "profile_user_id": "usr_anak123" }
 ```
 **Response**
 ```json
 {
   "ok": true,
   "user": { "user_id": "usr_...", "nama": "Yadi", "peran": "anggota" },
+  "profile": { "user_id": "usr_anak123", "nama": "Fatih", "peran": "anak" },
   "keluarga": {
     "keluarga_id": "kel_...", "nama_keluarga": "Keluarga Faturohman", "kode_invite": "AB12CD",
     "tema": { "primary": "#1b4332", "secondary": "#40916c", "font": "Plus Jakarta Sans", "mode": "light" }
   },
   "amalan": [
-    { "amalan_id": "am_...", "nama": "Sholat Subuh", "kategori": "Sholat", "tipe": "checkbox", "urutan": 1 }
+    { "amalan_id": "am_...", "nama": "Sholat Subuh", "kategori": "Sholat", "tipe": "checkbox", "urutan": 1, "target_user_ids": "" }
   ],
   "checkins": [
     { "tanggal": "2026-08-27", "amalan_id": "am_...", "value": true }
   ]
 }
 ```
+**Error** (tambahan): `profil_tidak_valid` — `profile_user_id` bukan diri sendiri atau bukan anak di keluarga yang sama.
 
 ## `upsert_checkin`
-Kirim batch perubahan checklist — dipanggil dari outbox sync (setiap ±15 detik atau saat online kembali), bukan per-klik.
+Kirim batch perubahan checklist — dipanggil dari outbox sync (setiap ±15 detik atau saat online kembali), bukan per-klik. `profile_user_id` opsional, sama seperti `get_state`.
 
 **Request**
 ```json
 {
-  "action": "upsert_checkin", "token": "...",
+  "action": "upsert_checkin", "token": "...", "profile_user_id": "usr_anak123",
   "items": [ { "tanggal": "2026-08-27", "amalan_id": "am_...", "value": true } ]
 }
 ```
@@ -91,14 +93,52 @@ Kirim batch perubahan checklist — dipanggil dari outbox sync (setiap ±15 deti
 { "ok": true, "synced": 1 }
 ```
 
-## `amalan_create` *(khusus Amir)*
+## `amalan_create`
+Siapa pun anggota login (amir/anggota) boleh memanggil ini. Kalau yang mengajukan **Amir**, amalan langsung berstatus `aktif`. Kalau bukan Amir, otomatis berstatus `diajukan` (usulan, menunggu Amir approve/reject lewat `amalan_update`). `target_user_ids` opsional — kosongkan untuk "berlaku semua anggota", atau isi `user_id` (dipisah koma) untuk amalan khusus anggota tertentu.
+
 **Request**
 ```json
-{ "action": "amalan_create", "token": "...", "nama": "Tilawah 1 Juz", "kategori": "Tilawah", "tipe": "checkbox", "urutan": 5 }
+{ "action": "amalan_create", "token": "...", "nama": "Tilawah 1 Juz", "kategori": "Tilawah", "tipe": "checkbox", "urutan": 5, "target_user_ids": "" }
 ```
 **Response**
 ```json
-{ "ok": true, "amalan_id": "am_..." }
+{ "ok": true, "amalan_id": "am_...", "status": "aktif" }
+```
+
+## `amalan_manage_list`
+Daftar amalan buat panel "Kelola Amalan". Amir melihat SEMUA amalan keluarga (semua status — buat approve/reject usulan & nonaktifkan). Anggota biasa hanya melihat amalan yang dia ajukan sendiri yang masih `diajukan`/`ditolak` (buat mantau status usulannya sendiri).
+
+**Request**
+```json
+{ "action": "amalan_manage_list", "token": "..." }
+```
+**Response**
+```json
+{ "ok": true, "amalan": [ { "amalan_id": "am_...", "nama": "...", "status": "diajukan", "dibuat_oleh": "usr_..." } ] }
+```
+
+## `dependent_create` *(khusus Amir)*
+Membuat profil anak — tanpa PIN, tidak bisa login sendiri. Dicentang oleh orang tua (amir/anggota) lewat profile switcher setelah login.
+
+**Request**
+```json
+{ "action": "dependent_create", "token": "...", "nama": "Fatih" }
+```
+**Response**
+```json
+{ "ok": true, "user_id": "usr_anak123" }
+```
+
+## `list_members`
+Daftar semua anggota keluarga (amir/anggota/anak) — dipakai buat profile switcher (filter `peran === 'anak'` atau diri sendiri) dan buat memilih target amalan khusus.
+
+**Request**
+```json
+{ "action": "list_members", "token": "..." }
+```
+**Response**
+```json
+{ "ok": true, "members": [ { "user_id": "usr_...", "nama": "Ihsan Faturohman", "peran": "amir" } ] }
 ```
 
 ## `amalan_update` *(khusus Amir)*
@@ -146,5 +186,6 @@ Kirim batch perubahan checklist — dipanggil dari outbox sync (setiap ±15 deti
 | `pin_salah` | PIN tidak cocok |
 | `forbidden` | Aksi butuh peran Amir, tapi token milik anggota |
 | `amalan_tidak_ditemukan` | `amalan_id` tidak ada atau bukan milik keluarga token tsb |
+| `profil_tidak_valid` | `profile_user_id` bukan diri sendiri atau bukan anak di keluarga yang sama |
 | `token_invalid` | Token rusak/tidak valid |
 | `unknown_action` | `action` tidak dikenali |

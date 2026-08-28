@@ -39,6 +39,20 @@
   .amalan-manage-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: .85rem; }
   .amalan-manage-item:last-child { border-bottom: none; }
   .amalan-manage-item .kategori { font-size: .7rem; color: var(--color-muted); }
+  .amalan-manage-item .actions { display: flex; gap: 10px; flex-shrink: 0; }
+  .badge { display: inline-block; font-size: .68rem; padding: 2px 8px; border-radius: 999px; margin-top: 2px; }
+  .badge.diajukan { background: #fef3c7; color: #92400e; }
+  .badge.ditolak { background: #fee2e2; color: #991b1b; }
+  .profile-switcher { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .profile-chip { flex-shrink: 0; padding: 8px 14px; border-radius: 999px; border: 1px solid #e2e2e2; background: #fff; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+  .profile-chip.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
+  .target-mode { display: flex; gap: 8px; margin-bottom: 8px; }
+  .target-mode label { display: flex; align-items: center; gap: 4px; font-size: .8rem; }
+  .target-checkbox-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .target-checkbox-list label { display: flex; align-items: center; gap: 8px; font-size: .85rem; }
+  .katalog-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .katalog-chip { padding: 6px 10px; border-radius: 8px; border: 1px dashed var(--color-secondary); background: #fff; color: var(--color-secondary); font-size: .75rem; cursor: pointer; }
+  details.katalog summary { font-size: .8rem; color: var(--color-secondary); cursor: pointer; margin-bottom: 8px; }
   .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .tabs button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #e2e2e2; background: #fff; cursor: pointer; font-size: .8rem; }
   .tabs button.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
@@ -106,6 +120,11 @@
         </div>
       </div>
 
+      <div class="card hidden" id="profileSwitcherCard">
+        <strong style="font-size:.8rem;display:block;margin-bottom:8px;">Mengisi checklist untuk:</strong>
+        <div class="profile-switcher" id="profileSwitcher"></div>
+      </div>
+
       <div class="card">
         <div id="amalanList"></div>
       </div>
@@ -116,6 +135,15 @@
         <p style="font-size:.75rem;color:var(--color-muted);">Bagikan kode ini ke anggota keluarga untuk bergabung.</p>
 
         <div class="section-divider">
+          <h3 class="section-title">Tambah Profil Anak</h3>
+          <p style="font-size:.75rem;color:var(--color-muted);margin-top:-4px;">Buat profil anak yang belum punya gadget sendiri — checklist-nya bisa diisi lewat "Mengisi checklist untuk" di atas.</p>
+          <div class="field" style="display:flex;gap:8px;">
+            <input id="newAnakNama" placeholder="Nama anak" style="flex:1;">
+            <button class="primary" style="width:auto;padding:10px 16px;" onclick="handleAddDependent()" type="button">+ Tambah</button>
+          </div>
+        </div>
+
+        <div class="section-divider">
           <h3 class="section-title">Kelola Amalan</h3>
           <div id="amalanManageList"></div>
 
@@ -123,15 +151,51 @@
           <div class="field"><label>Kategori</label><input id="newAmalanKategori" placeholder="mis. Sholat"></div>
           <div class="field">
             <label>Tipe</label>
-            <select id="newAmalanTipe" onchange="toggleTargetField()">
+            <select id="newAmalanTipe" onchange="toggleTargetField('newAmalanTipe','targetField')">
               <option value="checkbox">Checklist biasa</option>
               <option value="counter">Counter (ada target angka)</option>
             </select>
           </div>
           <div class="field hidden" id="targetField"><label>Target</label><input id="newAmalanTarget" type="number" placeholder="mis. 100"></div>
+          <div class="field">
+            <label>Untuk siapa?</label>
+            <div class="target-mode">
+              <label><input type="radio" name="targetMode" value="semua" checked onchange="toggleTargetPicker()"> Semua anggota</label>
+              <label><input type="radio" name="targetMode" value="tertentu" onchange="toggleTargetPicker()"> Anggota tertentu</label>
+            </div>
+            <div class="target-checkbox-list hidden" id="targetPicker"></div>
+          </div>
+          <details class="katalog">
+            <summary>💡 Lihat rekomendasi amalan</summary>
+            <div class="katalog-list" id="katalogAmir"></div>
+          </details>
           <button class="primary" onclick="handleAddAmalan()" type="button">+ Tambah Amalan</button>
           <p class="error hidden" id="amalanError"></p>
         </div>
+      </div>
+
+      <div class="card hidden" id="usulkanPanel">
+        <h3 class="section-title">Usulkan Amalan</h3>
+        <p style="font-size:.75rem;color:var(--color-muted);margin-top:-6px;">Amalan yang kamu usulkan akan menunggu persetujuan Amir.</p>
+        <div id="usulanSayaList"></div>
+
+        <div class="field" style="margin-top:12px;"><label>Nama Amalan</label><input id="usulNama" placeholder="mis. Membaca 1 halaman buku"></div>
+        <div class="field"><label>Kategori</label><input id="usulKategori" placeholder="mis. Ilmu"></div>
+        <div class="field">
+          <label>Tipe</label>
+          <select id="usulTipe" onchange="toggleTargetField('usulTipe','usulTargetField')">
+            <option value="checkbox">Checklist biasa</option>
+            <option value="counter">Counter (ada target angka)</option>
+          </select>
+        </div>
+        <div class="field hidden" id="usulTargetField"><label>Target</label><input id="usulTarget" type="number" placeholder="mis. 100"></div>
+        <div class="field"><label><input type="checkbox" id="usulKhususSaya"> Khusus buat saya (bukan untuk semua anggota)</label></div>
+        <details class="katalog">
+          <summary>💡 Lihat rekomendasi amalan</summary>
+          <div class="katalog-list" id="katalogAnggota"></div>
+        </details>
+        <button class="primary" onclick="handleProposeAmalan()" type="button">Kirim Usulan</button>
+        <p class="error hidden" id="usulError"></p>
       </div>
     </section>
 
@@ -148,10 +212,35 @@ let state = {
   token: localStorage.getItem('mtbk_token') || null,
   keluarga: null,
   user: null,
-  amalan: [],
-  checkins: {},   // key: `${tanggal}|${amalan_id}` -> value
-  outbox: JSON.parse(localStorage.getItem('mtbk_outbox') || '[]')
+  members: [],           // semua anggota keluarga (amir/anggota/anak) — buat switcher & target picker
+  activeProfileId: null,  // profil yang lagi diisi checklist-nya (diri sendiri atau anak)
+  profileData: {},        // { [user_id]: { amalan: [...], checkins: {'tgl|amalan_id': value} } }
+  manageList: [],          // cache hasil amalan_manage_list buat panel Amir/usulan
+  outbox: JSON.parse(localStorage.getItem('mtbk_outbox') || '[]')  // [{ profile_user_id, tanggal, amalan_id, value }]
 };
+
+const AMALAN_KATALOG = [
+  { nama: 'Sholat Subuh Berjamaah', kategori: 'Sholat', tipe: 'checkbox' },
+  { nama: 'Sholat Dzuhur Berjamaah', kategori: 'Sholat', tipe: 'checkbox' },
+  { nama: 'Sholat Ashar Berjamaah', kategori: 'Sholat', tipe: 'checkbox' },
+  { nama: 'Sholat Maghrib Berjamaah', kategori: 'Sholat', tipe: 'checkbox' },
+  { nama: 'Sholat Isya Berjamaah', kategori: 'Sholat', tipe: 'checkbox' },
+  { nama: 'Sholat Duha', kategori: 'Sholat', tipe: 'checkbox' },
+  { nama: 'Qiyamul Lail (Tahajud)', kategori: 'Malam', tipe: 'checkbox' },
+  { nama: 'Witir', kategori: 'Malam', tipe: 'checkbox' },
+  { nama: 'Dzikir Pagi', kategori: 'Dzikir', tipe: 'checkbox' },
+  { nama: 'Dzikir Sore', kategori: 'Dzikir', tipe: 'checkbox' },
+  { nama: 'Istighfar 100x', kategori: 'Dzikir', tipe: 'counter', target: 100 },
+  { nama: 'Sholawat 100x', kategori: 'Dzikir', tipe: 'counter', target: 100 },
+  { nama: 'Tilawah Al-Quran (halaman)', kategori: 'Tilawah', tipe: 'counter', target: 20 },
+  { nama: 'Hafalan Al-Quran', kategori: 'Tilawah', tipe: 'counter', target: 1 },
+  { nama: 'Membaca Al-Kahfi', kategori: 'Tilawah', tipe: 'checkbox' },
+  { nama: 'Infaq', kategori: 'Amal', tipe: 'checkbox' },
+  { nama: 'Puasa Senin-Kamis', kategori: 'Puasa', tipe: 'checkbox' },
+  { nama: 'Olahraga 30 menit', kategori: 'Sehat', tipe: 'counter', target: 30 },
+  { nama: 'Membantu Pekerjaan Rumah', kategori: 'Adab', tipe: 'checkbox' },
+  { nama: 'Merapikan Kamar/Mainan', kategori: 'Adab', tipe: 'checkbox' }
+];
 
 /* ================= API HELPER ================= */
 async function callApi(action, payload) {
@@ -227,7 +316,8 @@ function pesanError(kode) {
     user_tidak_ditemukan: 'Nama tidak ditemukan di keluarga ini.',
     pin_salah: 'PIN salah.',
     forbidden: 'Cuma Amir yang bisa melakukan ini.',
-    amalan_tidak_ditemukan: 'Amalan tidak ditemukan.'
+    amalan_tidak_ditemukan: 'Amalan tidak ditemukan.',
+    profil_tidak_valid: 'Profil tidak valid.'
   };
   return map[kode] || kode;
 }
@@ -236,9 +326,12 @@ function pesanError(kode) {
 async function boot() {
   if (!state.token) return; // tetap di screenAuth
   try {
+    const membersRes = await callApi('list_members', {});
+    state.members = membersRes.members;
     const data = await callApi('get_state', { since: todayMinus(7) });
-    state.user = data.user; state.keluarga = data.keluarga; state.amalan = data.amalan;
-    data.checkins.forEach(c => state.checkins[c.tanggal + '|' + c.amalan_id] = c.value);
+    state.user = data.user; state.keluarga = data.keluarga;
+    state.activeProfileId = data.profile.user_id;
+    setProfileData(data.profile.user_id, data.amalan, data.checkins);
     applyTema(data.keluarga.tema);
     renderApp();
     flushOutbox();
@@ -246,6 +339,23 @@ async function boot() {
     console.error(e);
     logout();
   }
+}
+
+function setProfileData(profileId, amalan, checkins) {
+  const map = {};
+  checkins.forEach(c => map[c.tanggal + '|' + c.amalan_id] = c.value);
+  state.profileData[profileId] = { amalan, checkins: map };
+}
+
+async function switchProfile(profileId) {
+  if (profileId === state.activeProfileId) return;
+  await flushOutbox(); // pastikan perubahan di profil sebelumnya kesimpen dulu
+  state.activeProfileId = profileId;
+  if (!state.profileData[profileId]) {
+    const data = await callApi('get_state', { since: todayMinus(7), profile_user_id: profileId });
+    setProfileData(profileId, data.amalan, data.checkins);
+  }
+  renderApp();
 }
 
 function applyTema(tema) {
@@ -263,21 +373,32 @@ function renderApp() {
   document.getElementById('userPeran').textContent = state.user.peran === 'amir' ? 'Amir Keluarga' : 'Anggota';
   const isAmir = state.user.peran === 'amir';
   document.getElementById('amirPanel').classList.toggle('hidden', !isAmir);
+  document.getElementById('usulkanPanel').classList.toggle('hidden', isAmir);
   document.getElementById('kodeInviteDisplay').textContent = state.keluarga.kode_invite;
-  if (isAmir) renderAmalanManageList();
+
+  renderProfileSwitcher();
+  if (isAmir) {
+    renderAmalanManageList();
+    renderTargetPicker();
+    renderKatalog('katalogAmir', 'newAmalanNama', 'newAmalanKategori', 'newAmalanTipe', 'newAmalanTarget');
+  } else {
+    renderUsulanSaya();
+    renderKatalog('katalogAnggota', 'usulNama', 'usulKategori', 'usulTipe', 'usulTarget');
+  }
 
   const today = todayStr();
+  const pd = state.profileData[state.activeProfileId] || { amalan: [], checkins: {} };
   const list = document.getElementById('amalanList');
   list.innerHTML = '';
 
-  if (!state.amalan.length) {
-    list.innerHTML = '<p class="empty-state">Amir belum menambahkan amalan. ' +
-      (state.user.peran === 'amir' ? 'Tambahkan lewat panel admin.' : 'Tunggu Amir menyusunnya.') + '</p>';
+  if (!pd.amalan.length) {
+    list.innerHTML = '<p class="empty-state">Belum ada amalan buat profil ini. ' +
+      (isAmir ? 'Tambahkan lewat panel admin.' : 'Tunggu Amir menyusunnya.') + '</p>';
     return;
   }
 
-  state.amalan.slice().sort((a, b) => (a.urutan || 0) - (b.urutan || 0)).forEach(a => {
-    const checked = !!state.checkins[today + '|' + a.amalan_id];
+  pd.amalan.slice().sort((a, b) => (a.urutan || 0) - (b.urutan || 0)).forEach(a => {
+    const checked = !!pd.checkins[today + '|' + a.amalan_id];
     const row = document.createElement('div');
     row.className = 'amalan-item';
     row.innerHTML = `
@@ -291,11 +412,65 @@ function renderApp() {
 
 function toggleAmalan(amalanId) {
   const today = todayStr();
+  const pd = state.profileData[state.activeProfileId];
   const key = today + '|' + amalanId;
-  const newValue = !state.checkins[key];
-  state.checkins[key] = newValue;
+  const newValue = !pd.checkins[key];
+  pd.checkins[key] = newValue;
   renderApp();
-  queueSync({ tanggal: today, amalan_id: amalanId, value: newValue });
+  queueSync({ profile_user_id: state.activeProfileId, tanggal: today, amalan_id: amalanId, value: newValue });
+}
+
+/* ================= PROFILE SWITCHER (ANAK) ================= */
+function renderProfileSwitcher() {
+  const card = document.getElementById('profileSwitcherCard');
+  const anakList = state.members.filter(m => m.peran === 'anak');
+  if (!anakList.length) { card.classList.add('hidden'); return; }
+  card.classList.remove('hidden');
+  const container = document.getElementById('profileSwitcher');
+  container.innerHTML = '';
+  const chips = [{ user_id: state.user.user_id, nama: 'Diri Sendiri' }].concat(anakList);
+  chips.forEach(m => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'profile-chip' + (state.activeProfileId === m.user_id ? ' active' : '');
+    chip.textContent = m.nama;
+    chip.onclick = () => switchProfile(m.user_id);
+    container.appendChild(chip);
+  });
+}
+
+async function handleAddDependent() {
+  const nama = val('newAnakNama');
+  if (!nama) return;
+  try {
+    await callApi('dependent_create', { nama });
+    document.getElementById('newAnakNama').value = '';
+    const membersRes = await callApi('list_members', {});
+    state.members = membersRes.members;
+    renderApp();
+  } catch (e) {
+    alert(pesanError(e.message));
+  }
+}
+
+/* ================= KATALOG REKOMENDASI ================= */
+function renderKatalog(containerId, namaId, kategoriId, tipeId, targetId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  AMALAN_KATALOG.forEach(k => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'katalog-chip';
+    chip.textContent = k.nama;
+    chip.onclick = () => {
+      document.getElementById(namaId).value = k.nama;
+      document.getElementById(kategoriId).value = k.kategori;
+      document.getElementById(tipeId).value = k.tipe;
+      toggleTargetField(tipeId, tipeId === 'newAmalanTipe' ? 'targetField' : 'usulTargetField');
+      document.getElementById(targetId).value = k.target || '';
+    };
+    container.appendChild(chip);
+  });
 }
 
 function escapeHtml(s) {
@@ -303,29 +478,82 @@ function escapeHtml(s) {
 }
 
 /* ================= KELOLA AMALAN (AMIR) ================= */
-function toggleTargetField() {
-  const tipe = document.getElementById('newAmalanTipe').value;
-  document.getElementById('targetField').classList.toggle('hidden', tipe !== 'counter');
+function toggleTargetField(selectId, fieldId) {
+  const tipe = document.getElementById(selectId).value;
+  document.getElementById(fieldId).classList.toggle('hidden', tipe !== 'counter');
 }
 
-function renderAmalanManageList() {
+function toggleTargetPicker() {
+  const mode = document.querySelector('input[name="targetMode"]:checked').value;
+  document.getElementById('targetPicker').classList.toggle('hidden', mode !== 'tertentu');
+}
+
+function renderTargetPicker() {
+  const container = document.getElementById('targetPicker');
+  container.innerHTML = '';
+  state.members.forEach(m => {
+    const label = document.createElement('label');
+    label.innerHTML = `<input type="checkbox" value="${m.user_id}"> ${escapeHtml(m.nama)}
+      <span style="color:var(--color-muted);font-size:.75rem;">(${escapeHtml(m.peran)})</span>`;
+    container.appendChild(label);
+  });
+}
+
+async function renderAmalanManageList() {
   const list = document.getElementById('amalanManageList');
-  if (!state.amalan.length) {
+  try {
+    const data = await callApi('amalan_manage_list', {});
+    state.manageList = data.amalan;
+  } catch (e) {
+    state.manageList = [];
+  }
+  if (!state.manageList.length) {
     list.innerHTML = '<p class="empty-state">Belum ada amalan. Tambahkan lewat form di bawah.</p>';
     return;
   }
   list.innerHTML = '';
-  state.amalan.slice().sort((a, b) => (a.urutan || 0) - (b.urutan || 0)).forEach(a => {
+  state.manageList.slice().sort((a, b) => (a.urutan || 0) - (b.urutan || 0)).forEach(a => {
+    const keterangan = a.kategori + (a.tipe === 'counter' ? ` · target ${a.target}` : '') +
+      (a.target_user_ids ? ' · khusus anggota tertentu' : '');
     const row = document.createElement('div');
     row.className = 'amalan-manage-item';
-    const keterangan = a.kategori + (a.tipe === 'counter' ? ` · target ${a.target}` : '');
-    row.innerHTML = `
-      <div><div>${escapeHtml(a.nama)}</div><div class="kategori">${escapeHtml(keterangan)}</div></div>
-      <button class="danger-link" type="button">Nonaktifkan</button>
-    `;
-    row.querySelector('button').onclick = () => handleDeactivateAmalan(a.amalan_id);
+
+    const info = document.createElement('div');
+    let badge = '';
+    if (a.status === 'diajukan') badge = '<span class="badge diajukan">Menunggu persetujuan</span>';
+    if (a.status === 'ditolak') badge = '<span class="badge ditolak">Ditolak</span>';
+    info.innerHTML = `<div>${escapeHtml(a.nama)}</div><div class="kategori">${escapeHtml(keterangan)}</div>${badge}`;
+    row.appendChild(info);
+
+    const actions = document.createElement('div');
+    actions.className = 'actions';
+    if (a.status === 'diajukan') {
+      const approveBtn = document.createElement('button');
+      approveBtn.type = 'button'; approveBtn.className = 'link'; approveBtn.textContent = 'Setujui';
+      approveBtn.onclick = () => handleReviewAmalan(a.amalan_id, 'aktif');
+      const rejectBtn = document.createElement('button');
+      rejectBtn.type = 'button'; rejectBtn.className = 'danger-link'; rejectBtn.textContent = 'Tolak';
+      rejectBtn.onclick = () => handleReviewAmalan(a.amalan_id, 'ditolak');
+      actions.appendChild(approveBtn); actions.appendChild(rejectBtn);
+    } else if (a.status === 'aktif') {
+      const deactivateBtn = document.createElement('button');
+      deactivateBtn.type = 'button'; deactivateBtn.className = 'danger-link'; deactivateBtn.textContent = 'Nonaktifkan';
+      deactivateBtn.onclick = () => handleDeactivateAmalan(a.amalan_id);
+      actions.appendChild(deactivateBtn);
+    }
+    row.appendChild(actions);
     list.appendChild(row);
   });
+}
+
+async function handleReviewAmalan(amalanId, newStatus) {
+  try {
+    await callApi('amalan_update', { amalan_id: amalanId, patch: { status: newStatus } });
+    await renderAmalanManageList();
+    await refreshAmalan();
+  } catch (e) {
+    alert(pesanError(e.message));
+  }
 }
 
 async function handleAddAmalan() {
@@ -333,7 +561,95 @@ async function handleAddAmalan() {
   const kategori = val('newAmalanKategori') || 'Umum';
   const tipe = document.getElementById('newAmalanTipe').value;
   const target = val('newAmalanTarget');
+  const mode = document.querySelector('input[name="targetMode"]:checked').value;
+  const targetUserIds = mode === 'tertentu'
+    ? Array.from(document.querySelectorAll('#targetPicker input:checked')).map(el => el.value).join(',')
+    : '';
   const errEl = document.getElementById('amalanError');
+  errEl.classList.add('hidden');
+
+  if (!nama) {
+    errEl.textContent = 'Nama amalan wajib diisi.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (mode === 'tertentu' && !targetUserIds) {
+    errEl.textContent = 'Pilih minimal 1 anggota.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    await callApi('amalan_create', {
+      nama, kategori, tipe,
+      target: tipe === 'counter' ? (Number(target) || 0) : '',
+      urutan: state.manageList.length + 1,
+      target_user_ids: targetUserIds
+    });
+    document.getElementById('newAmalanNama').value = '';
+    document.getElementById('newAmalanKategori').value = '';
+    document.getElementById('newAmalanTarget').value = '';
+    document.getElementById('newAmalanTipe').value = 'checkbox';
+    document.querySelector('input[name="targetMode"][value="semua"]').checked = true;
+    toggleTargetField('newAmalanTipe', 'targetField');
+    toggleTargetPicker();
+    await renderAmalanManageList();
+    await refreshAmalan();
+  } catch (e) {
+    errEl.textContent = pesanError(e.message);
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function handleDeactivateAmalan(amalanId) {
+  if (!confirm('Nonaktifkan amalan ini? Amalan akan hilang dari checklist anggota terkait.')) return;
+  try {
+    await callApi('amalan_deactivate', { amalan_id: amalanId });
+    await renderAmalanManageList();
+    await refreshAmalan();
+  } catch (e) {
+    alert(pesanError(e.message));
+  }
+}
+
+async function refreshAmalan() {
+  const data = await callApi('get_state', { since: todayMinus(7), profile_user_id: state.activeProfileId });
+  setProfileData(state.activeProfileId, data.amalan, data.checkins);
+  renderApp();
+}
+
+/* ================= USULKAN AMALAN (ANGGOTA) ================= */
+async function renderUsulanSaya() {
+  const container = document.getElementById('usulanSayaList');
+  try {
+    const data = await callApi('amalan_manage_list', {});
+    state.manageList = data.amalan;
+  } catch (e) {
+    state.manageList = [];
+  }
+  if (!state.manageList.length) {
+    container.innerHTML = '<p class="empty-state">Belum ada usulan.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  state.manageList.forEach(a => {
+    const badge = a.status === 'diajukan'
+      ? '<span class="badge diajukan">Menunggu persetujuan</span>'
+      : '<span class="badge ditolak">Ditolak</span>';
+    const row = document.createElement('div');
+    row.className = 'amalan-manage-item';
+    row.innerHTML = `<div><div>${escapeHtml(a.nama)}</div>${badge}</div>`;
+    container.appendChild(row);
+  });
+}
+
+async function handleProposeAmalan() {
+  const nama = val('usulNama');
+  const kategori = val('usulKategori') || 'Umum';
+  const tipe = document.getElementById('usulTipe').value;
+  const target = val('usulTarget');
+  const khususSaya = document.getElementById('usulKhususSaya').checked;
+  const errEl = document.getElementById('usulError');
   errEl.classList.add('hidden');
 
   if (!nama) {
@@ -346,35 +662,21 @@ async function handleAddAmalan() {
     await callApi('amalan_create', {
       nama, kategori, tipe,
       target: tipe === 'counter' ? (Number(target) || 0) : '',
-      urutan: state.amalan.length + 1
+      urutan: 99,
+      target_user_ids: khususSaya ? state.user.user_id : ''
     });
-    document.getElementById('newAmalanNama').value = '';
-    document.getElementById('newAmalanKategori').value = '';
-    document.getElementById('newAmalanTarget').value = '';
-    document.getElementById('newAmalanTipe').value = 'checkbox';
-    toggleTargetField();
-    await refreshAmalan();
+    document.getElementById('usulNama').value = '';
+    document.getElementById('usulKategori').value = '';
+    document.getElementById('usulTarget').value = '';
+    document.getElementById('usulTipe').value = 'checkbox';
+    document.getElementById('usulKhususSaya').checked = false;
+    toggleTargetField('usulTipe', 'usulTargetField');
+    alert('Usulan terkirim! Menunggu persetujuan Amir.');
+    await renderUsulanSaya();
   } catch (e) {
     errEl.textContent = pesanError(e.message);
     errEl.classList.remove('hidden');
   }
-}
-
-async function handleDeactivateAmalan(amalanId) {
-  if (!confirm('Nonaktifkan amalan ini? Amalan akan hilang dari checklist semua anggota.')) return;
-  try {
-    await callApi('amalan_deactivate', { amalan_id: amalanId });
-    await refreshAmalan();
-  } catch (e) {
-    alert(pesanError(e.message));
-  }
-}
-
-async function refreshAmalan() {
-  const data = await callApi('get_state', { since: todayMinus(7) });
-  state.amalan = data.amalan;
-  data.checkins.forEach(c => state.checkins[c.tanggal + '|' + c.amalan_id] = c.value);
-  renderApp();
 }
 
 /* ================= OFFLINE-FIRST SYNC =================
@@ -398,15 +700,24 @@ async function flushOutbox() {
   if (!state.outbox.length || !navigator.onLine || !state.token) return;
   const items = state.outbox.splice(0, state.outbox.length);
   document.getElementById('syncStatus').textContent = 'Menyimpan...';
-  try {
-    await callApi('upsert_checkin', { items });
-    localStorage.setItem('mtbk_outbox', JSON.stringify(state.outbox));
-    document.getElementById('syncStatus').textContent = 'Tersimpan ✓';
-  } catch (e) {
-    state.outbox = items.concat(state.outbox);
-    localStorage.setItem('mtbk_outbox', JSON.stringify(state.outbox));
-    document.getElementById('syncStatus').textContent = 'Offline — akan disinkron nanti';
+
+  // Kelompokkan per profil (bisa campur kalau sempat ganti profil sebelum outbox sempat sync)
+  const groups = {};
+  items.forEach(it => (groups[it.profile_user_id] = groups[it.profile_user_id] || []).push(it));
+
+  const gagal = [];
+  for (const profileUserId of Object.keys(groups)) {
+    const payload = groups[profileUserId].map(({ tanggal, amalan_id, value }) => ({ tanggal, amalan_id, value }));
+    try {
+      await callApi('upsert_checkin', { profile_user_id: profileUserId, items: payload });
+    } catch (e) {
+      gagal.push(...groups[profileUserId]);
+    }
   }
+
+  state.outbox = gagal.concat(state.outbox);
+  localStorage.setItem('mtbk_outbox', JSON.stringify(state.outbox));
+  document.getElementById('syncStatus').textContent = gagal.length ? 'Offline — akan disinkron nanti' : 'Tersimpan ✓';
 }
 
 window.addEventListener('online', flushOutbox);

@@ -23,10 +23,14 @@ var Laporan = {
       return { nama: u.nama, peran: u.peran, total_checkin: totalCheckin };
     });
 
+    var jumlahAmalanAktif = sheetToObjects(getSheet('amalan_config')).filter(function (a) {
+      return a.keluarga_id === amir.keluarga_id && a.status === 'aktif';
+    }).length;
+
     return {
       ok: true,
       periode: { from: p.from, to: p.to },
-      jumlah_amalan_aktif: Amalan.list(amir.keluarga_id).length,
+      jumlah_amalan_aktif: jumlahAmalanAktif,
       rekap: rekap
     };
   }

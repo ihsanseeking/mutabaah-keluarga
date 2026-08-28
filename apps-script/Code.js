@@ -39,6 +39,9 @@ function getActionHandler_(action) {
     amalan_create: Amalan.create,
     amalan_update: Amalan.update,
     amalan_deactivate: Amalan.deactivate,
+    amalan_manage_list: Amalan.manageList,
+    dependent_create: Anggota.createDependent,
+    list_members: Anggota.listMembers,
     get_laporan: Laporan.getLaporan
   };
   return actions[action];
