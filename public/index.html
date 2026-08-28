@@ -30,9 +30,15 @@
   .card { background: var(--color-surface); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
   .field { margin-bottom: 12px; }
   .field label { display: block; font-size: .8rem; color: var(--color-muted); margin-bottom: 4px; }
-  .field input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e2e2; font-size: 1rem; }
+  .field input, .field select { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #e2e2e2; font-size: 1rem; background: #fff; }
   button.primary { width: 100%; padding: 12px; border-radius: 10px; border: none; background: var(--color-primary); color: #fff; font-weight: 600; font-size: .95rem; cursor: pointer; }
   button.link { background: none; border: none; color: var(--color-secondary); font-size: .85rem; cursor: pointer; padding: 0; }
+  button.danger-link { background: none; border: none; color: #b91c1c; font-size: .78rem; cursor: pointer; padding: 0; flex-shrink: 0; }
+  .section-title { font-size: .85rem; margin: 0 0 10px; }
+  .section-divider { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f0f0; }
+  .amalan-manage-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: .85rem; }
+  .amalan-manage-item:last-child { border-bottom: none; }
+  .amalan-manage-item .kategori { font-size: .7rem; color: var(--color-muted); }
   .tabs { display: flex; gap: 8px; margin-bottom: 14px; }
   .tabs button { flex: 1; padding: 8px; border-radius: 10px; border: 1px solid #e2e2e2; background: #fff; cursor: pointer; font-size: .8rem; }
   .tabs button.active { background: var(--color-primary); color: #fff; border-color: var(--color-primary); }
@@ -107,7 +113,25 @@
       <div class="card" id="amirPanel">
         <strong style="font-size:.85rem;">Kode Undangan Keluarga</strong>
         <div style="font-size:1.4rem;letter-spacing:2px;font-weight:700;margin-top:4px;" id="kodeInviteDisplay"></div>
-        <p style="font-size:.75rem;color:var(--color-muted);margin-bottom:0;">Bagikan kode ini ke anggota keluarga untuk bergabung.</p>
+        <p style="font-size:.75rem;color:var(--color-muted);">Bagikan kode ini ke anggota keluarga untuk bergabung.</p>
+
+        <div class="section-divider">
+          <h3 class="section-title">Kelola Amalan</h3>
+          <div id="amalanManageList"></div>
+
+          <div class="field" style="margin-top:12px;"><label>Nama Amalan</label><input id="newAmalanNama" placeholder="mis. Sholat Subuh Berjamaah"></div>
+          <div class="field"><label>Kategori</label><input id="newAmalanKategori" placeholder="mis. Sholat"></div>
+          <div class="field">
+            <label>Tipe</label>
+            <select id="newAmalanTipe" onchange="toggleTargetField()">
+              <option value="checkbox">Checklist biasa</option>
+              <option value="counter">Counter (ada target angka)</option>
+            </select>
+          </div>
+          <div class="field hidden" id="targetField"><label>Target</label><input id="newAmalanTarget" type="number" placeholder="mis. 100"></div>
+          <button class="primary" onclick="handleAddAmalan()" type="button">+ Tambah Amalan</button>
+          <p class="error hidden" id="amalanError"></p>
+        </div>
       </div>
     </section>
 
@@ -201,7 +225,9 @@ function pesanError(kode) {
     field_kurang: 'Lengkapi semua kolom dulu ya.',
     kode_invite_tidak_ditemukan: 'Kode keluarga tidak ditemukan.',
     user_tidak_ditemukan: 'Nama tidak ditemukan di keluarga ini.',
-    pin_salah: 'PIN salah.'
+    pin_salah: 'PIN salah.',
+    forbidden: 'Cuma Amir yang bisa melakukan ini.',
+    amalan_tidak_ditemukan: 'Amalan tidak ditemukan.'
   };
   return map[kode] || kode;
 }
@@ -235,8 +261,10 @@ function renderApp() {
   document.getElementById('screenApp').classList.remove('hidden');
   document.getElementById('userNama').textContent = state.user.nama;
   document.getElementById('userPeran').textContent = state.user.peran === 'amir' ? 'Amir Keluarga' : 'Anggota';
-  document.getElementById('amirPanel').classList.toggle('hidden', state.user.peran !== 'amir');
+  const isAmir = state.user.peran === 'amir';
+  document.getElementById('amirPanel').classList.toggle('hidden', !isAmir);
   document.getElementById('kodeInviteDisplay').textContent = state.keluarga.kode_invite;
+  if (isAmir) renderAmalanManageList();
 
   const today = todayStr();
   const list = document.getElementById('amalanList');
@@ -272,6 +300,81 @@ function toggleAmalan(amalanId) {
 
 function escapeHtml(s) {
   return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+/* ================= KELOLA AMALAN (AMIR) ================= */
+function toggleTargetField() {
+  const tipe = document.getElementById('newAmalanTipe').value;
+  document.getElementById('targetField').classList.toggle('hidden', tipe !== 'counter');
+}
+
+function renderAmalanManageList() {
+  const list = document.getElementById('amalanManageList');
+  if (!state.amalan.length) {
+    list.innerHTML = '<p class="empty-state">Belum ada amalan. Tambahkan lewat form di bawah.</p>';
+    return;
+  }
+  list.innerHTML = '';
+  state.amalan.slice().sort((a, b) => (a.urutan || 0) - (b.urutan || 0)).forEach(a => {
+    const row = document.createElement('div');
+    row.className = 'amalan-manage-item';
+    const keterangan = a.kategori + (a.tipe === 'counter' ? ` · target ${a.target}` : '');
+    row.innerHTML = `
+      <div><div>${escapeHtml(a.nama)}</div><div class="kategori">${escapeHtml(keterangan)}</div></div>
+      <button class="danger-link" type="button">Nonaktifkan</button>
+    `;
+    row.querySelector('button').onclick = () => handleDeactivateAmalan(a.amalan_id);
+    list.appendChild(row);
+  });
+}
+
+async function handleAddAmalan() {
+  const nama = val('newAmalanNama');
+  const kategori = val('newAmalanKategori') || 'Umum';
+  const tipe = document.getElementById('newAmalanTipe').value;
+  const target = val('newAmalanTarget');
+  const errEl = document.getElementById('amalanError');
+  errEl.classList.add('hidden');
+
+  if (!nama) {
+    errEl.textContent = 'Nama amalan wajib diisi.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  try {
+    await callApi('amalan_create', {
+      nama, kategori, tipe,
+      target: tipe === 'counter' ? (Number(target) || 0) : '',
+      urutan: state.amalan.length + 1
+    });
+    document.getElementById('newAmalanNama').value = '';
+    document.getElementById('newAmalanKategori').value = '';
+    document.getElementById('newAmalanTarget').value = '';
+    document.getElementById('newAmalanTipe').value = 'checkbox';
+    toggleTargetField();
+    await refreshAmalan();
+  } catch (e) {
+    errEl.textContent = pesanError(e.message);
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function handleDeactivateAmalan(amalanId) {
+  if (!confirm('Nonaktifkan amalan ini? Amalan akan hilang dari checklist semua anggota.')) return;
+  try {
+    await callApi('amalan_deactivate', { amalan_id: amalanId });
+    await refreshAmalan();
+  } catch (e) {
+    alert(pesanError(e.message));
+  }
+}
+
+async function refreshAmalan() {
+  const data = await callApi('get_state', { since: todayMinus(7) });
+  state.amalan = data.amalan;
+  data.checkins.forEach(c => state.checkins[c.tanggal + '|' + c.amalan_id] = c.value);
+  renderApp();
 }
 
 /* ================= OFFLINE-FIRST SYNC =================
