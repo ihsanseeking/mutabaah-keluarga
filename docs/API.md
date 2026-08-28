@@ -187,5 +187,6 @@ Daftar semua anggota keluarga (amir/anggota/anak) — dipakai buat profile switc
 | `forbidden` | Aksi butuh peran Amir, tapi token milik anggota |
 | `amalan_tidak_ditemukan` | `amalan_id` tidak ada atau bukan milik keluarga token tsb |
 | `profil_tidak_valid` | `profile_user_id` bukan diri sendiri atau bukan anak di keluarga yang sama |
+| `nama_sudah_terdaftar` | Nama sudah dipakai anggota/anak lain yang aktif di keluarga yang sama (`join_keluarga`/`dependent_create`) |
 | `token_invalid` | Token rusak/tidak valid |
 | `unknown_action` | `action` tidak dikenali |

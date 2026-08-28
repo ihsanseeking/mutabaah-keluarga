@@ -34,6 +34,12 @@ var Auth = {
       var keluarga = findRow('keluarga', 'kode_invite', String(p.kode_invite).toUpperCase());
       if (!keluarga) throw new Error('kode_invite_tidak_ditemukan');
 
+      var namaSudahAda = sheetToObjects(getSheet('users')).some(function (u) {
+        return u.keluarga_id === keluarga.keluarga_id && u.aktif &&
+          String(u.nama).trim().toLowerCase() === p.nama.trim().toLowerCase();
+      });
+      if (namaSudahAda) throw new Error('nama_sudah_terdaftar');
+
       var userId = generateId('usr');
       var salt = Utilities.getUuid();
       appendRow(getSheet('users'), {

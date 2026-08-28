@@ -10,6 +10,12 @@ var Anggota = {
     if (!p.nama) throw new Error('field_kurang');
     var user = requireAmir(p.token);
     return withLock(function () {
+      var namaSudahAda = sheetToObjects(getSheet('users')).some(function (u) {
+        return u.keluarga_id === user.keluarga_id && u.aktif &&
+          String(u.nama).trim().toLowerCase() === p.nama.trim().toLowerCase();
+      });
+      if (namaSudahAda) throw new Error('nama_sudah_terdaftar');
+
       var userId = generateId('usr');
       appendRow(getSheet('users'), {
         user_id: userId, keluarga_id: user.keluarga_id, nama: p.nama, peran: 'anak',
