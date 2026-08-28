@@ -26,7 +26,7 @@ var Checkin = {
 
     return {
       ok: true,
-      user: { user_id: user.user_id, nama: user.nama, peran: user.peran },
+      user: { user_id: user.user_id, nama: user.nama, peran: user.peran, no_hp: user.no_hp || '' },
       profile: { user_id: profile.user_id, nama: profile.nama, peran: profile.peran },
       keluarga: {
         keluarga_id: keluarga.keluarga_id, nama_keluarga: keluarga.nama_keluarga,

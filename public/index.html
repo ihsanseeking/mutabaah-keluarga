@@ -389,15 +389,33 @@ async function handleUpdateNoHp() {
   if (!noHp) return;
   try {
     await callApi('update_no_hp', { no_hp: noHp });
+    state.user.no_hp = noHp;
     alert('No HP tersimpan! Sekarang bisa dipakai buat masuk tanpa kode keluarga.');
     document.getElementById('noHpForm').classList.add('hidden');
-    document.getElementById('profilNoHp').value = '';
+    renderApp();
   } catch (e) {
     alert(pesanError(e.message));
   }
 }
 
 /* ================= NOTIFIKASI PENGINGAT (FCM) ================= */
+
+// Dipanggil tiap boot() — kalau izin browser udah pernah di-"Izinkan"
+// sebelumnya, daftar ulang token secara diam-diam (gak nampilin popup izin
+// lagi) dan update tombolnya, biar statusnya kebaca bener walau app baru
+// dibuka lagi/di-refresh.
+async function checkPushStatus() {
+  const btn = document.getElementById('notifToggleBtn');
+  if (!btn || !('Notification' in window) || !firebase.messaging.isSupported()) return;
+  if (Notification.permission === 'denied') {
+    btn.textContent = '🔕 Notifikasi diblokir (aktifkan dari setelan browser)';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    await registerPushToken_(btn);
+  }
+}
+
 async function setupPushNotifications() {
   const btn = document.getElementById('notifToggleBtn');
   try {
@@ -410,6 +428,15 @@ async function setupPushNotifications() {
       alert('Izin notifikasi belum diaktifkan. Coba lagi & pilih "Izinkan".');
       return;
     }
+    await registerPushToken_(btn);
+  } catch (e) {
+    console.error('Push setup gagal:', e);
+    alert('Gagal aktifkan notifikasi: ' + e.message);
+  }
+}
+
+async function registerPushToken_(btn) {
+  try {
     const registration = await navigator.serviceWorker.ready;
     const messaging = firebase.messaging();
     const fcmToken = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
@@ -417,8 +444,7 @@ async function setupPushNotifications() {
     await callApi('save_push_token', { fcm_token: fcmToken });
     if (btn) btn.textContent = '🔔 Notifikasi aktif ✓';
   } catch (e) {
-    console.error('Push setup gagal:', e);
-    alert('Gagal aktifkan notifikasi: ' + e.message);
+    console.error('Daftar token notifikasi gagal:', e);
   }
 }
 
@@ -533,6 +559,7 @@ async function boot() {
     applyTema(data.keluarga.tema);
     renderApp();
     flushOutbox();
+    checkPushStatus();
   } catch (e) {
     console.error(e);
     logout();
@@ -573,6 +600,14 @@ function renderApp() {
   document.getElementById('amirPanel').classList.toggle('hidden', !isAmir);
   document.getElementById('usulkanPanel').classList.toggle('hidden', isAmir);
   document.getElementById('kodeInviteDisplay').textContent = state.keluarga.kode_invite;
+
+  const noHpBtn = document.getElementById('noHpToggleBtn');
+  if (state.user.no_hp) {
+    noHpBtn.textContent = '📱 No HP: ' + state.user.no_hp + ' (ubah)';
+    document.getElementById('profilNoHp').value = state.user.no_hp;
+  } else {
+    noHpBtn.textContent = '+ Atur No HP (biar bisa masuk tanpa kode)';
+  }
 
   renderProfileSwitcher();
   if (isAmir) {
