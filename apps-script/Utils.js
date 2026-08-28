@@ -3,10 +3,9 @@
  * Lihat docs/ERD.md untuk penjelasan tiap tabel/tab.
  */
 
-// Isi dengan Spreadsheet ID kalau script tidak container-bound.
-// Kosongkan (null) kalau script dibuat via `clasp create --type webapp`
-// yang otomatis container-bound ke Spreadsheet aktifnya.
-var SHEET_ID = null;
+// ID Spreadsheet database (script standalone, bukan container-bound —
+// lihat README.md §Setup). Ganti kalau mau pindah ke Spreadsheet lain.
+var SHEET_ID = '1MbbbcKpDPZ0mtXb0TL4NqEqprBOFzp8NfX0iByf2y_g';
 
 var SCHEMA = {
   keluarga: ['keluarga_id', 'nama_keluarga', 'kode_invite', 'amir_user_id',
