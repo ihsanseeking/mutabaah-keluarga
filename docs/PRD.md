@@ -12,6 +12,7 @@ Diturunkan dari konsep: Mutabaah Fidin Jenggot Merah
 | 1.0 | 2026-08-27 | Draft awal MVP: Amir-only config amalan, fokus istilah "Keluarga", backend Google Sheets + Apps Script |
 | 1.1 | 2026-08-28 | Profil anak (checklist by proxy oleh orang tua), amalan bertarget per-anggota, usulan amalan dari anggota (approve/reject oleh Amir), katalog rekomendasi amalan |
 | 1.1.1 | 2026-08-28 | Login via No HP (opsional, tanpa kode undangan), cegah nama/No HP duplikat, ingat kode undangan terakhir di device |
+| 1.2.0 | 2026-08-28 | PWA installable penuh (icon + service worker), pengingat checklist terjadwal (Amir atur jam, sistem kasih rekomendasi jam) via push notification Firebase Cloud Messaging |
 
 ---
 

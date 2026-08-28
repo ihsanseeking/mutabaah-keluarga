@@ -13,7 +13,9 @@ var SCHEMA = {
   users: ['user_id', 'keluarga_id', 'nama', 'peran', 'pin_hash', 'pin_salt', 'no_hp', 'aktif', 'dibuat_at'],
   amalan_config: ['amalan_id', 'keluarga_id', 'nama', 'kategori', 'tipe', 'target',
     'urutan', 'hari_spesifik', 'target_user_ids', 'status', 'dibuat_oleh', 'dibuat_at'],
-  checkin: ['checkin_id', 'keluarga_id', 'user_id', 'tanggal', 'amalan_id', 'value', 'updated_at']
+  checkin: ['checkin_id', 'keluarga_id', 'user_id', 'tanggal', 'amalan_id', 'value', 'updated_at'],
+  reminder: ['reminder_id', 'keluarga_id', 'jam', 'label', 'aktif', 'last_sent_date', 'dibuat_at'],
+  push_token: ['token_id', 'user_id', 'keluarga_id', 'fcm_token', 'dibuat_at']
 };
 
 /**

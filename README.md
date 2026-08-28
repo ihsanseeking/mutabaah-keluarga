@@ -49,7 +49,13 @@ Di editor Apps Script (`clasp open`):
 3. Salin URL Web App hasil `clasp deploy`.
 
 ### 2. Frontend
-Buka `public/index.html`, ganti nilai `API_URL` dengan URL Web App di atas, lalu deploy ke Cloudflare Pages/Netlify (drag & drop atau git-connected).
+Buka `public/index.html`, ganti nilai `API_URL` dengan URL Web App di atas, lalu deploy ke Cloudflare Pages/Netlify/GitHub Pages (lihat `.github/workflows/pages.yml` — auto-deploy tiap push ke `main`).
+
+### 3. Notifikasi Pengingat (Firebase Cloud Messaging) — opsional
+1. Buat project gratis di [console.firebase.google.com](https://console.firebase.google.com), tambahkan Web App, salin `firebaseConfig`-nya ke `FIREBASE_CONFIG` di `public/index.html` (dan di `public/sw.js`, harus sama persis).
+2. Project Settings → Cloud Messaging → Web configuration → Generate key pair → salin ke `VAPID_KEY` di `public/index.html`.
+3. Project Settings → Service accounts → Generate new private key → **jangan commit ke repo**. Isi seluruh JSON-nya sebagai Script Property `FIREBASE_SERVICE_ACCOUNT` di Apps Script.
+4. Di editor Apps Script, jalankan fungsi `installReminderTrigger` sekali — ini memasang time-driven trigger yang ngecek jadwal pengingat tiap 5 menit.
 
 ## Struktur Proyek
 ```

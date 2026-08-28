@@ -44,6 +44,10 @@ function getActionHandler_(action) {
     amalan_manage_list: Amalan.manageList,
     dependent_create: Anggota.createDependent,
     list_members: Anggota.listMembers,
+    reminder_list: Reminder.list,
+    reminder_create: Reminder.create,
+    reminder_delete: Reminder.delete,
+    save_push_token: PushToken.save,
     get_laporan: Laporan.getLaporan
   };
   return actions[action];

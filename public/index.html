@@ -8,6 +8,8 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="theme-color" content="#1b4332">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js"></script>
 <style>
   :root {
     --color-primary: #1b4332;
@@ -137,6 +139,7 @@
             <input id="profilNoHp" type="tel" placeholder="mis. 081234567890" style="flex:1;">
             <button class="primary" style="width:auto;padding:10px 16px;" onclick="handleUpdateNoHp()" type="button">Simpan</button>
           </div>
+          <button class="link" onclick="setupPushNotifications()" type="button" id="notifToggleBtn" style="display:block;margin-top:8px;">🔔 Aktifkan Notifikasi Pengingat</button>
         </div>
       </div>
 
@@ -192,6 +195,18 @@
           <button class="primary" onclick="handleAddAmalan()" type="button">+ Tambah Amalan</button>
           <p class="error hidden" id="amalanError"></p>
         </div>
+
+        <div class="section-divider">
+          <h3 class="section-title">Pengingat Checklist</h3>
+          <p style="font-size:.75rem;color:var(--color-muted);margin-top:-4px;">Notifikasi terkirim ke semua anggota yang sudah aktifkan notifikasi (tombol 🔔 di atas).</p>
+          <div id="reminderList"></div>
+
+          <div class="field" style="margin-top:12px;"><label>Jam</label><input id="newReminderJam" type="time"></div>
+          <div class="field"><label>Label (opsional)</label><input id="newReminderLabel" placeholder="mis. Cek checklist malam"></div>
+          <div class="katalog-list" id="katalogJam"></div>
+          <button class="primary" onclick="handleAddReminder()" type="button">+ Tambah Pengingat</button>
+          <p class="error hidden" id="reminderError"></p>
+        </div>
       </div>
 
       <div class="card hidden" id="usulkanPanel">
@@ -227,6 +242,25 @@
 /* ================= KONFIGURASI ================= */
 const API_URL = 'https://script.google.com/macros/s/AKfycbwTW5ErWG5RK8wJ58U3iAxnqIm9jm3OYdWD-7J3kvn7f46l7AtIt9XA-uQQi48yRyZe/exec';
 
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCkAs9UxrTkYiPQpG5--Rr1xDAd6bFN22Y",
+  authDomain: "mutabaah-keluarga.firebaseapp.com",
+  projectId: "mutabaah-keluarga",
+  storageBucket: "mutabaah-keluarga.firebasestorage.app",
+  messagingSenderId: "204512737720",
+  appId: "1:204512737720:web:f2eb0076acaad001f5f74d"
+};
+const VAPID_KEY = 'BA9gfQci7uY23N7udIwtrCiXX7rtsFvvWmnw7Mm7TwoCDpKQqLXlCeL0EWkwAvOE7o47wt4XgL6RBUVqMRDylw4';
+firebase.initializeApp(FIREBASE_CONFIG);
+
+const JAM_REKOMENDASI = [
+  { jam: '05:00', label: "Ba'da Subuh" },
+  { jam: '12:30', label: "Ba'da Dzuhur" },
+  { jam: '15:30', label: "Ba'da Ashar" },
+  { jam: '18:30', label: "Ba'da Maghrib" },
+  { jam: '20:00', label: 'Malam' }
+];
+
 /* ================= STATE ================= */
 let state = {
   token: localStorage.getItem('mtbk_token') || null,
@@ -236,6 +270,7 @@ let state = {
   activeProfileId: null,  // profil yang lagi diisi checklist-nya (diri sendiri atau anak)
   profileData: {},        // { [user_id]: { amalan: [...], checkins: {'tgl|amalan_id': value} } }
   manageList: [],          // cache hasil amalan_manage_list buat panel Amir/usulan
+  reminders: [],           // cache hasil reminder_list
   outbox: JSON.parse(localStorage.getItem('mtbk_outbox') || '[]')  // [{ profile_user_id, tanggal, amalan_id, value }]
 };
 
@@ -362,6 +397,104 @@ async function handleUpdateNoHp() {
   }
 }
 
+/* ================= NOTIFIKASI PENGINGAT (FCM) ================= */
+async function setupPushNotifications() {
+  const btn = document.getElementById('notifToggleBtn');
+  try {
+    if (!('Notification' in window) || !navigator.serviceWorker || !firebase.messaging.isSupported()) {
+      alert('Browser ini belum mendukung notifikasi push.');
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      alert('Izin notifikasi belum diaktifkan. Coba lagi & pilih "Izinkan".');
+      return;
+    }
+    const registration = await navigator.serviceWorker.ready;
+    const messaging = firebase.messaging();
+    const fcmToken = await messaging.getToken({ vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+    if (!fcmToken) throw new Error('Gagal ambil token notifikasi.');
+    await callApi('save_push_token', { fcm_token: fcmToken });
+    if (btn) btn.textContent = '🔔 Notifikasi aktif ✓';
+  } catch (e) {
+    console.error('Push setup gagal:', e);
+    alert('Gagal aktifkan notifikasi: ' + e.message);
+  }
+}
+
+/* ================= PENGINGAT CHECKLIST (AMIR) ================= */
+function renderJamKatalog() {
+  const container = document.getElementById('katalogJam');
+  container.innerHTML = '';
+  JAM_REKOMENDASI.forEach(j => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'katalog-chip';
+    chip.textContent = `${j.jam} ${j.label}`;
+    chip.onclick = () => {
+      document.getElementById('newReminderJam').value = j.jam;
+      document.getElementById('newReminderLabel').value = j.label;
+    };
+    container.appendChild(chip);
+  });
+}
+
+async function renderReminderList() {
+  const container = document.getElementById('reminderList');
+  try {
+    const data = await callApi('reminder_list', {});
+    state.reminders = data.reminders;
+  } catch (e) {
+    state.reminders = [];
+  }
+  if (!state.reminders.length) {
+    container.innerHTML = '<p class="empty-state">Belum ada pengingat.</p>';
+    return;
+  }
+  container.innerHTML = '';
+  state.reminders.slice().sort((a, b) => a.jam.localeCompare(b.jam)).forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'amalan-manage-item';
+    row.innerHTML = `<div>${escapeHtml(r.jam)} — ${escapeHtml(r.label || 'Pengingat checklist')}</div>`;
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button'; delBtn.className = 'danger-link'; delBtn.textContent = 'Hapus';
+    delBtn.onclick = () => handleDeleteReminder(r.reminder_id);
+    row.appendChild(delBtn);
+    container.appendChild(row);
+  });
+}
+
+async function handleAddReminder() {
+  const jam = document.getElementById('newReminderJam').value;
+  const label = val('newReminderLabel');
+  const errEl = document.getElementById('reminderError');
+  errEl.classList.add('hidden');
+  if (!jam) {
+    errEl.textContent = 'Pilih jam dulu.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+  try {
+    await callApi('reminder_create', { jam, label });
+    document.getElementById('newReminderJam').value = '';
+    document.getElementById('newReminderLabel').value = '';
+    await renderReminderList();
+  } catch (e) {
+    errEl.textContent = pesanError(e.message);
+    errEl.classList.remove('hidden');
+  }
+}
+
+async function handleDeleteReminder(reminderId) {
+  if (!confirm('Hapus pengingat ini?')) return;
+  try {
+    await callApi('reminder_delete', { reminder_id: reminderId });
+    await renderReminderList();
+  } catch (e) {
+    alert(pesanError(e.message));
+  }
+}
+
 function val(id) { return document.getElementById(id).value.trim(); }
 function showAuthError(msg) {
   const el = document.getElementById('authError');
@@ -381,7 +514,8 @@ function pesanError(kode) {
     profil_tidak_valid: 'Profil tidak valid.',
     nama_sudah_terdaftar: 'Nama ini sudah terdaftar di keluarga ini. Coba menu Masuk (bukan Gabung).',
     no_hp_sudah_dipakai: 'No HP ini sudah dipakai akun lain.',
-    no_hp_tidak_ditemukan: 'Belum ada akun dengan No HP ini. Masuk pakai Kode Keluarga dulu, lalu daftarkan No HP-nya.'
+    no_hp_tidak_ditemukan: 'Belum ada akun dengan No HP ini. Masuk pakai Kode Keluarga dulu, lalu daftarkan No HP-nya.',
+    reminder_tidak_ditemukan: 'Pengingat tidak ditemukan.'
   };
   return map[kode] || kode;
 }
@@ -445,6 +579,8 @@ function renderApp() {
     renderAmalanManageList();
     renderTargetPicker();
     renderKatalog('katalogAmir', 'newAmalanNama', 'newAmalanKategori', 'newAmalanTipe', 'newAmalanTarget');
+    renderReminderList();
+    renderJamKatalog();
   } else {
     renderUsulanSaya();
     renderKatalog('katalogAnggota', 'usulNama', 'usulKategori', 'usulTipe', 'usulTarget');

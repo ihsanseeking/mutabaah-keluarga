@@ -119,6 +119,26 @@ Setiap tab punya baris header di baris 1, dibuat otomatis oleh fungsi `setupShee
 
 > Kombinasi `user_id + tanggal + amalan_id` bersifat unik secara logis, divalidasi di kode (`Checkin.upsertCheckin` melakukan cari-lalu-update-atau-insert) — Google Sheets sendiri tidak punya unique constraint native.
 
+### `reminder`
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| reminder_id | TEXT (PK) | format `rmd_xxxxxxxx` |
+| keluarga_id | TEXT (FK) | |
+| jam | TEXT | format `"HH:mm"`, zona Asia/Jakarta |
+| label | TEXT | opsional, mis. "Cek checklist malam" |
+| aktif | BOOLEAN | |
+| last_sent_date | TEXT (`yyyy-MM-dd`) | tanggal terakhir kali reminder ini terkirim — cegah kirim dobel di hari yang sama |
+| dibuat_at | DATETIME | |
+
+### `push_token`
+| Kolom | Tipe | Keterangan |
+|---|---|---|
+| token_id | TEXT (PK) | format `tok_xxxxxxxx` |
+| user_id | TEXT (FK) | |
+| keluarga_id | TEXT (FK) | |
+| fcm_token | TEXT (unique) | token Firebase Cloud Messaging milik satu device/browser |
+| dibuat_at | DATETIME | |
+
 ## Kenapa Bukan 1 Tab per Keluarga?
 
 Supaya jumlah tab tidak bertambah terus seiring keluarga baru — cukup 4 tab tetap, seberapa pun banyak keluarga yang pakai. Ini juga membuka kemungkinan laporan lintas keluarga di level admin platform kalau suatu saat dibutuhkan.

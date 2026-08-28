@@ -174,6 +174,23 @@ Daftar semua anggota keluarga (amir/anggota/anak) — dipakai buat profile switc
 { "action": "amalan_deactivate", "token": "...", "amalan_id": "am_..." }
 ```
 
+## `reminder_list`
+**Request**: `{ "action": "reminder_list", "token": "..." }`
+**Response**: `{ "ok": true, "reminders": [ { "reminder_id": "rmd_...", "jam": "18:30", "label": "Ba'da Maghrib" } ] }`
+
+## `reminder_create` *(khusus Amir)*
+**Request**: `{ "action": "reminder_create", "token": "...", "jam": "18:30", "label": "Ba'da Maghrib" }`
+**Response**: `{ "ok": true, "reminder_id": "rmd_..." }`
+
+## `reminder_delete` *(khusus Amir)*
+**Request**: `{ "action": "reminder_delete", "token": "...", "reminder_id": "rmd_..." }`
+
+## `save_push_token`
+Simpan/update token Firebase Cloud Messaging device yang lagi dipakai — dipanggil otomatis dari frontend setelah user mengizinkan notifikasi.
+
+**Request**: `{ "action": "save_push_token", "token": "...", "fcm_token": "..." }`
+**Response**: `{ "ok": true }`
+
 ## `get_laporan` *(khusus Amir)*
 **Request**
 ```json
@@ -211,5 +228,6 @@ Daftar semua anggota keluarga (amir/anggota/anak) — dipakai buat profile switc
 | `nama_sudah_terdaftar` | Nama sudah dipakai anggota/anak lain yang aktif di keluarga yang sama (`join_keluarga`/`dependent_create`) |
 | `no_hp_sudah_dipakai` | No HP sudah dipakai akun aktif lain (lintas keluarga) |
 | `no_hp_tidak_ditemukan` | Tidak ada akun aktif dengan No HP tsb (`login_hp`) |
+| `reminder_tidak_ditemukan` | `reminder_id` tidak ada atau bukan milik keluarga token tsb |
 | `token_invalid` | Token rusak/tidak valid |
 | `unknown_action` | `action` tidak dikenali |
