@@ -276,7 +276,9 @@ async function doRegister() {
 
 async function doJoin() {
   try {
-    const r = await callApi('join_keluarga', { kode_invite: val('joinKode'), nama: val('joinNama'), pin: val('joinPin') });
+    const kode = val('joinKode');
+    const r = await callApi('join_keluarga', { kode_invite: kode, nama: val('joinNama'), pin: val('joinPin') });
+    localStorage.setItem('mtbk_last_kode', kode.toUpperCase());
     saveSession(r.token);
     boot();
   } catch (e) { showAuthError(e.message); }
@@ -284,11 +286,17 @@ async function doJoin() {
 
 async function doLogin() {
   try {
-    const r = await callApi('login', { kode_invite: val('loginKode'), nama: val('loginNama'), pin: val('loginPin') });
+    const kode = val('loginKode');
+    const r = await callApi('login', { kode_invite: kode, nama: val('loginNama'), pin: val('loginPin') });
+    localStorage.setItem('mtbk_last_kode', kode.toUpperCase());
     saveSession(r.token);
     boot();
   } catch (e) { showAuthError(e.message); }
 }
+
+// Isi otomatis kode keluarga terakhir yang dipakai di device ini, biar gak
+// perlu diketik ulang tiap kali logout/login lagi.
+document.getElementById('loginKode').value = localStorage.getItem('mtbk_last_kode') || '';
 
 function saveSession(token) {
   state.token = token;
