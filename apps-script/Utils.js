@@ -19,6 +19,57 @@ var SCHEMA = {
 };
 
 /**
+ * Kolom yang isinya HARUS selalu teks literal (bukan tanggal/jam/angka),
+ * karena polanya ("18:30", "2026-08-27", nomor HP) gampang salah "ditebak"
+ * Google Sheets jadi tipe date/time/number secara otomatis saat ditulis
+ * lewat setValue()/appendRow() — bukan cuma pas diketik manual.
+ */
+var TEXT_COLUMNS = {
+  checkin: [{ col: 'tanggal', format: 'yyyy-MM-dd' }],
+  reminder: [{ col: 'jam', format: 'HH:mm' }, { col: 'last_sent_date', format: 'yyyy-MM-dd' }],
+  users: [{ col: 'no_hp', format: null }]
+};
+
+/**
+ * Jalankan SEKALI dari editor Apps Script kalau ada kolom yang kebaca aneh
+ * (mis. jam pengingat muncul sebagai "1899-12-29T23:58...") — akibat Sheets
+ * otomatis "mengubah" nilai teks yang mirip tanggal/jam jadi tipe date/time.
+ * Fungsi ini: (1) set kolom terkait jadi format teks permanen biar gak
+ * kejadian lagi ke depannya, (2) perbaiki nilai yang sudah kadung berubah.
+ * Aman dijalankan berkali-kali.
+ */
+function fixTextColumns() {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+
+  Object.keys(TEXT_COLUMNS).forEach(function (sheetName) {
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return;
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    var lastRow = sheet.getLastRow();
+
+    TEXT_COLUMNS[sheetName].forEach(function (spec) {
+      var idx = headers.indexOf(spec.col);
+      if (idx === -1) return;
+      var colNum = idx + 1;
+
+      // Kunci format kolom (sampai baris maksimum) jadi teks permanen —
+      // ini yang mencegah auto-convert kejadian lagi buat data baru.
+      sheet.getRange(1, colNum, sheet.getMaxRows(), 1).setNumberFormat('@');
+
+      if (!spec.format || lastRow < 2) return;
+      var range = sheet.getRange(2, colNum, lastRow - 1, 1);
+      var fixed = range.getValues().map(function (row) {
+        var v = row[0];
+        return [v instanceof Date ? Utilities.formatDate(v, 'Asia/Jakarta', spec.format) : v];
+      });
+      range.setValues(fixed);
+    });
+  });
+
+  Logger.log('Kolom teks sudah diperbaiki.');
+}
+
+/**
  * Jalankan SEKALI dari editor Apps Script setelah deploy pertama kali,
  * untuk membuat semua tab & header sesuai docs/ERD.md.
  */
