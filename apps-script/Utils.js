@@ -32,13 +32,21 @@ function setupSheets() {
 }
 
 /**
- * Jalankan SEKALI dari editor Apps Script kalau Sheet sudah pernah dibuat
- * lewat setupSheets() versi lama (sebelum kolom target_user_ids ditambahkan) —
- * cuma nambah header kolom yang belum ada, gak menyentuh data yang sudah ada.
+ * Jalankan SEKALI dari editor Apps Script tiap kali SCHEMA di Utils.js
+ * bertambah (tab baru atau kolom baru) — aman dijalankan berkali-kali:
+ * tab yang belum ada dibuatkan lengkap dengan headernya, tab yang sudah
+ * ada cuma ditambah kolom yang belum ada (data lama tidak disentuh).
  */
 function migrateSchema() {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
   Object.keys(SCHEMA).forEach(function (name) {
-    var sheet = getSheet(name);
+    var sheet = ss.getSheetByName(name);
+    if (!sheet) {
+      sheet = ss.insertSheet(name);
+      sheet.getRange(1, 1, 1, SCHEMA[name].length).setValues([SCHEMA[name]]);
+      sheet.setFrozenRows(1);
+      return;
+    }
     var lastCol = Math.max(sheet.getLastColumn(), 1);
     var existing = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
     SCHEMA[name].forEach(function (col) {
