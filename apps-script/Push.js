@@ -81,11 +81,15 @@ function kirimFcm_(fcmToken, title, body) {
   var svc = JSON.parse(firebaseServiceAccount_());
   var accessToken = getFcmAccessToken_(svc);
 
+  // Sengaja pakai `data` (bukan `notification`) — biar browser TIDAK auto-
+  // tampilin notifikasi bawaan (yang gak bisa di-atur getar/requireInteraction-
+  // nya), dan selalu lewat handler kita sendiri di sw.js/index.html supaya
+  // konsisten getar + gak ilang sendiri, baik app lagi kebuka atau tertutup.
   var payload = {
     message: {
       token: fcmToken,
-      notification: { title: title, body: body },
-      webpush: { fcm_options: { link: '/' } }
+      data: { title: title, body: body },
+      webpush: { headers: { Urgency: 'high' } }
     }
   };
 

@@ -254,6 +254,34 @@ const FIREBASE_CONFIG = {
 const VAPID_KEY = 'BA9gfQci7uY23N7udIwtrCiXX7rtsFvvWmnw7Mm7TwoCDpKQqLXlCeL0EWkwAvOE7o47wt4XgL6RBUVqMRDylw4';
 firebase.initializeApp(FIREBASE_CONFIG);
 
+// Pesan FCM sengaja dikirim server sebagai `data` (bukan `notification`) —
+// browser gak auto-tampilin data message, jadi HARUS ditangani manual di
+// sini juga (buat kondisi app lagi kebuka/foreground). Kondisi background
+// ditangani sw.js (onBackgroundMessage).
+if (firebase.messaging.isSupported()) {
+  firebase.messaging().onMessage((payload) => {
+    const title = (payload.data && payload.data.title) || 'Mutabaah Keluarga';
+    const body = (payload.data && payload.data.body) || '';
+    showLocalNotification_(title, body);
+  });
+}
+
+async function showLocalNotification_(title, body) {
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    await registration.showNotification(title, {
+      body,
+      icon: 'icons/icon-192.png',
+      badge: 'icons/icon-192.png',
+      vibrate: [300, 150, 300, 150, 300],
+      requireInteraction: true,
+      tag: 'mutabaah-reminder'
+    });
+  } catch (e) {
+    console.error('Gagal nampilin notifikasi:', e);
+  }
+}
+
 const JAM_REKOMENDASI = [
   { jam: '05:00', label: "Ba'da Subuh" },
   { jam: '12:30', label: "Ba'da Dzuhur" },
@@ -474,15 +502,7 @@ async function testNotification() {
     alert('Aktifkan notifikasi dulu ya (tombol "🔔 Aktifkan Notifikasi Pengingat" di atas).');
     return;
   }
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    await registration.showNotification('Mutabaah Keluarga', {
-      body: 'Ini contoh notifikasi pengingat checklist 🙂',
-      icon: 'icons/icon-192.png'
-    });
-  } catch (e) {
-    alert('Gagal nampilin notifikasi: ' + e.message);
-  }
+  await showLocalNotification_('Mutabaah Keluarga', 'Ini contoh notifikasi pengingat checklist 🙂');
 }
 
 /* ================= PENGINGAT CHECKLIST (AMIR) ================= */

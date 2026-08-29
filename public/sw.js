@@ -6,7 +6,7 @@
  * konsisten dengan pola offline-first di index.html (localStorage yang jadi
  * primary store, bukan cache HTTP).
  */
-const CACHE_NAME = 'mutabaah-keluarga-v3';
+const CACHE_NAME = 'mutabaah-keluarga-v4';
 const APP_SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -61,7 +61,14 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
-  const title = (payload.notification && payload.notification.title) || 'Mutabaah Keluarga';
-  const body = (payload.notification && payload.notification.body) || '';
-  self.registration.showNotification(title, { body, icon: 'icons/icon-192.png' });
+  const title = (payload.data && payload.data.title) || 'Mutabaah Keluarga';
+  const body = (payload.data && payload.data.body) || '';
+  self.registration.showNotification(title, {
+    body,
+    icon: 'icons/icon-192.png',
+    badge: 'icons/icon-192.png',
+    vibrate: [300, 150, 300, 150, 300],
+    requireInteraction: true,
+    tag: 'mutabaah-reminder'
+  });
 });
