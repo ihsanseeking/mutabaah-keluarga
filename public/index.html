@@ -267,6 +267,11 @@ if (firebase.messaging.isSupported()) {
 }
 
 async function showLocalNotification_(title, body) {
+  // Panggil getar langsung di sini (bukan cuma lewat opsi `vibrate` di
+  // notifikasi) — beberapa Android/Chrome gak selalu ngehormatin pola getar
+  // yang nempel di notifikasi, tapi panggilan navigator.vibrate() langsung
+  // dari halaman (bukan dari service worker) biasanya lebih kepakai.
+  if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 300]);
   try {
     const registration = await navigator.serviceWorker.ready;
     await registration.showNotification(title, {
