@@ -140,6 +140,7 @@
             <button class="primary" style="width:auto;padding:10px 16px;" onclick="guardBusy_(handleUpdateNoHp)" type="button">Simpan</button>
           </div>
           <button class="link" onclick="setupPushNotifications()" type="button" id="notifToggleBtn" style="display:block;margin-top:8px;">🔔 Aktifkan Notifikasi Pengingat</button>
+          <button class="link" onclick="testNotification()" type="button" style="display:block;margin-top:4px;">🔊 Tes Notifikasi (lihat/dengar contohnya)</button>
         </div>
       </div>
 
@@ -459,6 +460,28 @@ async function registerPushToken_(btn) {
     if (btn) btn.textContent = '🔔 Notifikasi aktif ✓';
   } catch (e) {
     console.error('Daftar token notifikasi gagal:', e);
+  }
+}
+
+// Notifikasi LOKAL langsung (gak lewat backend/FCM sama sekali) — buat coba
+// lihat/dengar kayak apa notifnya, tanpa perlu nunggu jadwal pengingat.
+async function testNotification() {
+  if (!('Notification' in window)) {
+    alert('Browser ini belum mendukung notifikasi.');
+    return;
+  }
+  if (Notification.permission !== 'granted') {
+    alert('Aktifkan notifikasi dulu ya (tombol "🔔 Aktifkan Notifikasi Pengingat" di atas).');
+    return;
+  }
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    await registration.showNotification('Mutabaah Keluarga', {
+      body: 'Ini contoh notifikasi pengingat checklist 🙂',
+      icon: 'icons/icon-192.png'
+    });
+  } catch (e) {
+    alert('Gagal nampilin notifikasi: ' + e.message);
   }
 }
 

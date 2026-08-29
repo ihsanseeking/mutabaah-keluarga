@@ -160,15 +160,33 @@ function sheetToObjects(sheet) {
   });
 }
 
+/** True kalau kolom ini harus selalu ditulis sebagai teks literal (lihat TEXT_COLUMNS). */
+function isTextColumn_(sheetName, colName) {
+  return (TEXT_COLUMNS[sheetName] || []).some(function (s) { return s.col === colName; });
+}
+
 /**
  * Selalu baca urutan header LANGSUNG dari sheet (bukan dari SCHEMA) — supaya
  * tetap benar walau sheet lama sudah dimigrasi dan kolom barunya nempel di
  * ujung, bukan di posisi yang didefinisikan di SCHEMA.
+ *
+ * Buat kolom yang ada di TEXT_COLUMNS, format sel dikunci ke teks ('@')
+ * TEPAT SEBELUM setValue dalam eksekusi yang sama — mengandalkan format
+ * kolom yang di-set di eksekusi lain (mis. fixTextColumns) ternyata tidak
+ * selalu cukup buat mencegah Sheets auto-convert nilai baru yang mirip
+ * tanggal/jam.
  */
 function appendRow(sheet, obj) {
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var targetRow = sheet.getLastRow() + 1;
+  var sheetName = sheet.getName();
+
+  headers.forEach(function (h, i) {
+    if (isTextColumn_(sheetName, h)) sheet.getRange(targetRow, i + 1).setNumberFormat('@');
+  });
+
   var row = headers.map(function (h) { return obj[h] !== undefined ? obj[h] : ''; });
-  sheet.appendRow(row);
+  sheet.getRange(targetRow, 1, 1, row.length).setValues([row]);
 }
 
 function findRow(sheetName, key, value) {
@@ -188,7 +206,10 @@ function updateRow(sheetName, key, value, patch) {
     if (data[r][keyIdx] === value) {
       Object.keys(patch).forEach(function (k) {
         var idx = headers.indexOf(k);
-        if (idx > -1) sheet.getRange(r + 1, idx + 1).setValue(patch[k]);
+        if (idx === -1) return;
+        var cell = sheet.getRange(r + 1, idx + 1);
+        if (isTextColumn_(sheetName, k)) cell.setNumberFormat('@');
+        cell.setValue(patch[k]);
       });
       return true;
     }

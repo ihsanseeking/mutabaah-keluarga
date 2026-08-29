@@ -6,7 +6,7 @@
  * konsisten dengan pola offline-first di index.html (localStorage yang jadi
  * primary store, bukan cache HTTP).
  */
-const CACHE_NAME = 'mutabaah-keluarga-v2';
+const CACHE_NAME = 'mutabaah-keluarga-v3';
 const APP_SHELL = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', (event) => {
@@ -25,6 +25,24 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || event.request.url.includes('script.google.com')) return;
+
+  // HTML/navigasi: SELALU coba network dulu (biar update kode selalu kepakai
+  // begitu online), cache cuma jadi fallback pas offline. Aset statis lain
+  // (icon, manifest) tetap cache-first, gak sering berubah.
+  const isHtml = event.request.mode === 'navigate' || event.request.url.endsWith('.html');
+  if (isHtml) {
+    event.respondWith(
+      fetch(event.request)
+        .then((res) => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
 
